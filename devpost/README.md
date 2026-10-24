@@ -8,11 +8,11 @@ Pinned upstream revision: `a0f065781873e8a7ed9a9a705a8dafa6a0810439`.
 
 ## Current state
 
-- `1-start`: initial idea, plan-first experience, and end-to-end learning goal captured. Coding background is not established; do not assume beginner or expert.
-- `2-scope`: a substantive draft is saved in `scope.md`; learner approval is pending.
-- `3-prd`: not started. Use the existing `plan.md` and scope decisions rather than repeating product/design questions already answered there.
-- `4-spec`: not started. The draft engineering roadmap in `docs/plans/` supplies research and recommendations, not an approved curriculum spec.
-- `5-build`: not started. No application build slices have been completed.
+- `1-start`: complete.
+- `2-scope`: `scope.md` approved.
+- `3-prd`: `prd.md` approved (extracted from the approved plan and scope).
+- `4-spec`: `spec.md` approved (extracted from the approved engineering roadmap).
+- `5-build`: fast mode. Code for slices 1–8 is written and mechanically verified; no slice is checked off because each still needs its live provider or device evidence and the learner's hands-on check. See `checklist.md`.
 - `6-ship`: not started. No submission, video, or deployment is claimed.
 
 The personal learner profile is ignored by git. That prevents accidental commits by default; it does not make the AI conversation private or erase committed history.

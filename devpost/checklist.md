@@ -6,7 +6,7 @@ approval_basis: build order approved in the displayed implementation plan
 
 # Build Checklist
 
-Build mode: fast ? explicitly selected by the learner ("first one"); concise updates, early feedback and final review remain required.
+Build mode: fast — explicitly selected by the learner ("first one"); concise updates, early feedback and final review remain required.
 
 ## Slices
 
@@ -108,11 +108,11 @@ Build mode: fast ? explicitly selected by the learner ("first one"); concise upd
 
 ## Final Review
 
-- [ ] Final review complete ? feedback resolved and learner confirms ready to ship
+- [ ] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete ? trace one real request through the implementation
+- [ ] Learning activity complete — trace one real request through the implementation
 - [ ] Optional edit and transfer reflection addressed
 - [ ] `devpost/app-map.html` generated, checked and shown
 

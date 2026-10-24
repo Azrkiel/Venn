@@ -5,9 +5,16 @@ export class HttpError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
 
+export function appOrigin(request: Request): string {
+  const configured = process.env.APP_BASE_URL?.trim();
+  if (configured) return new URL(configured).origin;
+  // Unconfigured: trust the host the browser addressed; request.url can name a different loopback host.
+  const host = request.headers.get('host');
+  return host ? `${new URL(request.url).protocol}//${host}` : new URL(request.url).origin;
+}
+
 export function requireSameOrigin(request: Request): void {
-  const expected = new URL(process.env.APP_BASE_URL ?? request.url).origin;
-  if (request.headers.get('origin') !== expected) {
+  if (request.headers.get('origin') !== appOrigin(request)) {
     throw new HttpError(403, 'INVALID_ORIGIN', 'Please open Venn directly and try again.');
   }
 }

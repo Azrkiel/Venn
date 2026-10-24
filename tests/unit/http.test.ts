@@ -10,6 +10,12 @@ describe('request boundaries', () => {
     expect(() => requireSameOrigin(new Request('https://venn.example/api/x', { headers: { origin: 'https://evil.example' } }))).toThrow(HttpError);
     expect(() => requireSameOrigin(new Request('https://venn.example/api/x', { headers: { origin: 'https://venn.example' } }))).not.toThrow();
   });
+  it('uses the addressed host when no origin is configured', () => {
+    vi.stubEnv('APP_BASE_URL', '');
+    const at = (origin: string) => new Request('http://localhost:3000/api/x', { headers: { host: '127.0.0.1:3000', origin } });
+    expect(() => requireSameOrigin(at('http://127.0.0.1:3000'))).not.toThrow();
+    expect(() => requireSameOrigin(at('http://evil.example'))).toThrow(HttpError);
+  });
   it('does not accept a missing browser origin for session writes', () => {
     expect(() => requireSameOrigin(new Request('http://localhost/api/x'))).toThrow(HttpError);
   });

@@ -24,6 +24,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://venn:venn@127.0.0.1:5432/venn
       DIRECT_URL: postgresql://venn:venn@127.0.0.1:5432/venn
+      APP_BASE_URL: http://127.0.0.1:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { currentUserId } from '@/auth';
 import { createSecret } from '@/features/identity/secrets';
 import { castVote, voteInputSchema } from '@/features/polls/service';
-import { apiError, privateJson, readJson, requireSameOrigin } from '@/lib/http';
+import { apiError, appOrigin, privateJson, readJson, requireSameOrigin } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -20,7 +20,7 @@ export async function PUT(request: Request, context: { params: Promise<{ share: 
     const result = await castVote((await context.params).share, input, { userId, guestKey, guestName: input.guestName });
     if (guestKey !== previous) {
       cookieStore.set('venn-poll-guest', guestKey, { httpOnly: true, sameSite: 'lax',
-        secure: new URL(process.env.APP_BASE_URL ?? request.url).protocol === 'https:',
+        secure: new URL(appOrigin(request)).protocol === 'https:',
         path: '/api/polls', maxAge: 48 * 60 * 60 });
     }
     return privateJson(result);

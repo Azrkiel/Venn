@@ -32,7 +32,7 @@ export function calendarRouteError(error: unknown) {
 }
 
 export function setupRedirect(request: Request, state: string, requestId?: string) {
-  const destination = new URL('/setup', process.env.APP_BASE_URL ?? request.url);
+  const destination = new URL('/setup', process.env.APP_BASE_URL?.trim() || request.url);
   destination.searchParams.set('calendar', state);
   if (requestId) destination.searchParams.set('request', requestId);
   return Response.redirect(destination, 303);

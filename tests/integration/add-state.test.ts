@@ -12,8 +12,9 @@ vi.mock('@/lib/db', () => ({ getDb: () => ({
   eventAction: { findUnique: mocks.actionFind, create: mocks.actionCreate, update: mocks.actionUpdate, updateMany: mocks.actionUpdateMany },
   schedulingRequest: { updateMany: mocks.requestUpdateMany, update: mocks.requestUpdate },
   $transaction: mocks.transaction,
-}) }));
+}), isPrismaError: (error: unknown, code: string) => typeof error === 'object' && error !== null && 'code' in error && error.code === code }));
 import { addSelectedEvent } from '@/features/requests/add';
+import { CalendarError } from '@/features/calendar/errors';
 import { getDb } from '@/lib/db';
 
 const start = new Date(Date.now() + 86_400_000);
@@ -46,5 +47,29 @@ describe('booking state guards', () => {
     await expect(addSelectedEvent('owner', 'r', { slotId: 's', slotVersion: 1 })).rejects.toThrow();
     const destructive = mocks.actionUpdate.mock.calls.some(([input]) => input.data?.state === 'failed' || input.data?.state === 'uncertain');
     expect(destructive).toBe(false);
+  });
+  it('marks a definitive calendar refusal failed so the owner can choose again', async () => {
+    mocks.insert.mockRejectedValue(new CalendarError('CALENDAR_WRITE_CONSENT_REQUIRED', 403));
+    await expect(addSelectedEvent('owner', 'r', { slotId: 's', slotVersion: 1 })).rejects.toMatchObject({ code: 'CALENDAR_WRITE_CONSENT_REQUIRED' });
+    expect(mocks.actionUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { state: 'failed' } }));
+  });
+  it('keeps an ambiguous write uncertain', async () => {
+    mocks.insert.mockRejectedValue(new CalendarError('CALENDAR_WRITE_UNCERTAIN'));
+    await expect(addSelectedEvent('owner', 'r', { slotId: 's', slotVersion: 1 })).rejects.toMatchObject({ code: 'CALENDAR_WRITE_UNCERTAIN' });
+    expect(mocks.actionUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { state: 'uncertain' } }));
+  });
+  it('keeps a prior uncertain action uncertain when reconciliation cannot run', async () => {
+    mocks.load.mockResolvedValue({ ...saved, eventAction: { state: 'uncertain', slotId: 's' } });
+    mocks.actionFind.mockResolvedValue({ state: 'uncertain', slotId: 's', createdAt: new Date(0) });
+    mocks.actionUpdate.mockImplementation(async ({ data }) => ({ calendarId: 'primary', ...data }));
+    mocks.lookup.mockRejectedValue(new CalendarError('CALENDAR_RECONNECT_REQUIRED', 401));
+    await expect(addSelectedEvent('owner', 'r', { slotId: 's', slotVersion: 1 })).rejects.toMatchObject({ code: 'CALENDAR_RECONNECT_REQUIRED' });
+    expect(mocks.actionUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { state: 'uncertain' } }));
+    expect(mocks.insert).not.toHaveBeenCalled();
+  });
+  it('reports a concurrent claim as in progress instead of a server error', async () => {
+    mocks.transaction.mockRejectedValue(Object.assign(new Error('serialization'), { code: 'P2034' }));
+    await expect(addSelectedEvent('owner', 'r', { slotId: 's', slotVersion: 1 })).rejects.toMatchObject({ code: 'ADD_IN_PROGRESS' });
+    expect(mocks.insert).not.toHaveBeenCalled();
   });
 });

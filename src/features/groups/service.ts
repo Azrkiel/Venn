@@ -50,10 +50,12 @@ export async function leaveOrDeleteGroup(userId: string, groupId: string, delete
   if (!group) throw new HttpError(404, 'GROUP_NOT_FOUND', 'That group no longer exists.');
   if (deleteGroup) { await requireGroupOwner(userId, groupId); await getDb().group.delete({ where: { id: groupId } }); return; }
   if (group.ownerId === userId) throw new HttpError(409, 'OWNER_CANNOT_LEAVE', 'Delete the group explicitly instead of leaving it without an organizer.');
-  await getDb().$transaction([
-    getDb().membership.deleteMany({ where: { groupId, userId } }),
-    getDb().schedulingRequest.updateMany({ where: { groupId, state: { in: ['ready', 'selected'] } }, data: { state: 'retry_required' } }),
-  ]);
+  await getDb().$transaction(async db => {
+    const left = await db.membership.deleteMany({ where: { groupId, userId } });
+    // Only a real member leaving changes the roster; anyone else must not invalidate the group's requests.
+    if (left.count === 0) throw new HttpError(404, 'GROUP_NOT_FOUND', 'That group no longer exists.');
+    await db.schedulingRequest.updateMany({ where: { groupId, state: { in: ['ready', 'selected'] } }, data: { state: 'retry_required' } });
+  });
 }
 
 export async function requestContext(userId: string, groupId: string): Promise<RequestContext> {

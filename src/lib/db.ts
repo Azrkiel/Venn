@@ -11,3 +11,7 @@ export function getDb(): PrismaClient {
   }
   return shared.vennDb;
 }
+
+export function isPrismaError(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
+}

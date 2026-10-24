@@ -1,4 +1,4 @@
-import { getDb } from '@/lib/db';
+import { getDb, isPrismaError } from '@/lib/db';
 import { HttpError } from '@/lib/http';
 import { requestContext } from '@/features/groups/service';
 import { parseIntent } from '@/features/scheduling/intent';
@@ -12,7 +12,10 @@ export async function createLiveRequest(ownerId: string, input: { groupId: strin
   const group = await requestContext(ownerId, input.groupId);
   const receivedAt = new Date().toISOString();
   const result = await prepareRequest({ ...input, ownerId, group, receivedAt }, { parse: parseIntent, availability: getUserAvailability });
-  if (result.state === 'needs_clarification' || !result.intent.localDate) return result;
+  // Unsaved outcomes return only the interpretation; member user IDs stay server-side.
+  if (result.state === 'needs_clarification' || !result.intent.localDate) {
+    return { state: result.state, intent: result.intent, timezone: result.timezone, checkedAt: result.checkedAt };
+  }
   const saved = await getDb().schedulingRequest.create({ data: {
     ownerId, groupId: group.id, requesterMemberId: input.requesterMemberId, activity: result.intent.activity,
     localDate: result.intent.localDate, durationMinutes: result.intent.durationMinutes, timezone: input.timezone,
@@ -47,21 +50,38 @@ export async function getOwnerRequest(ownerId: string, requestId: string) {
 
 export async function selectSlot(ownerId: string, requestId: string, slotId: string, slotVersion: number) {
   const saved = await loadOwnerRequest(ownerId, requestId);
-  if (saved.eventAction) throw new HttpError(409, 'EVENT_ACTION_BOUND', 'This request already has an event action. Start a fresh request to change the time.');
+  if (saved.eventAction && saved.eventAction.state !== 'failed') throw new HttpError(409, 'EVENT_ACTION_BOUND', 'This request already has an event action. Start a fresh request to change the time.');
   if (!saved.slots.some(slot => slot.id === slotId) || saved.slotVersion !== slotVersion || !['ready', 'selected'].includes(saved.state)) {
     throw new HttpError(409, 'STALE_OPTION', 'The options changed. Check availability again.');
   }
-  const changed = await getDb().schedulingRequest.updateMany({ where: { id: requestId, ownerId, slotVersion,
-    state: { in: ['ready', 'selected'] }, eventAction: { is: null }, expiresAt: { gt: new Date() } }, data: { state: 'selected', selectedSlotId: slotId } });
-  if (changed.count !== 1) throw new HttpError(409, 'STALE_OPTION', 'The options changed. Check availability again.');
+  // Serializable so a concurrent Add claim cannot bind an event to the previously selected slot.
+  let changed;
+  try {
+    changed = await getDb().$transaction(async db => {
+      // A failed action proved no event was written, so the owner may choose again.
+      await db.eventAction.deleteMany({ where: { requestId, ownerId, state: 'failed' } });
+      return db.schedulingRequest.updateMany({ where: { id: requestId, ownerId, slotVersion,
+        state: { in: ['ready', 'selected'] }, eventAction: { is: null }, expiresAt: { gt: new Date() } }, data: { state: 'selected', selectedSlotId: slotId } });
+    }, { isolationLevel: 'Serializable' });
+  } catch (error) {
+    if (!isPrismaError(error, 'P2034')) throw error;
+  }
+  if (changed?.count !== 1) throw new HttpError(409, 'STALE_OPTION', 'The options changed. Check availability again.');
   return getOwnerRequest(ownerId, requestId);
 }
 
 export async function cancelRequest(ownerId: string, requestId: string) {
   const saved = await loadOwnerRequest(ownerId, requestId);
   if (saved.eventAction && ['pending', 'uncertain', 'added'].includes(saved.eventAction.state)) throw new HttpError(409, 'EVENT_ACTION_BOUND', 'Reconcile the event action before cancelling this request.');
-  const changed = await getDb().schedulingRequest.updateMany({ where: { id: requestId, ownerId, state: { not: 'added' },
-    OR: [{ eventAction: { is: null } }, { eventAction: { is: { state: 'failed' } } }] }, data: { state: 'cancelled', selectedSlotId: null } });
+  let changed;
+  try {
+    changed = await getDb().$transaction(db => db.schedulingRequest.updateMany({ where: { id: requestId, ownerId, state: { not: 'added' },
+      OR: [{ eventAction: { is: null } }, { eventAction: { is: { state: 'failed' } } }] }, data: { state: 'cancelled', selectedSlotId: null } }),
+    { isolationLevel: 'Serializable' });
+  } catch (error) {
+    if (!isPrismaError(error, 'P2034')) throw error;
+    throw new HttpError(409, 'EVENT_ACTION_BOUND', 'An Add action started at the same time. Check the request again.');
+  }
   if (!changed.count) throw new HttpError(409, 'ALREADY_ADDED', 'That event has already been added.');
   await getDb().shareGrant.updateMany({ where: { requestId }, data: { revokedAt: new Date() } });
   return { state: 'cancelled' };

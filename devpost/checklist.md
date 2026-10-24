@@ -6,7 +6,7 @@ approval_basis: build order approved in the displayed implementation plan
 
 # Build Checklist
 
-Build mode: awaiting learner preference; first-slice implementation can proceed while the question is pending.
+Build mode: fast ? explicitly selected by the learner ("first one"); concise updates, early feedback and final review remain required.
 
 ## Slices
 
@@ -45,7 +45,7 @@ Build mode: awaiting learner preference; first-slice implementation can proceed 
   Why now: Follows the approved dependency order and keeps the overlap kernel early.
   PRD ref: `prd.md > Requests and replies`
   Spec ref: `spec.md > Scheduling core`
-  Build: Add structured Claude parsing, semantic validation, zoned windows, normalized requests, warm drafts and private cards.
+  Build: Add structured Gemini parsing, semantic validation, zoned windows, normalized requests, warm drafts and private cards.
   Verify (mechanical): Intent/windows/request tests; inspect rendered card and retained records
   Learner check: Enter lunch tomorrow, choose an option, and copy the reply.
   Commit: `Turn scheduling texts into live options and manual-send drafts`
@@ -126,3 +126,5 @@ Activity mode: Pending actual build and learner feedback.
 
 - The learner approved the existing scope, stack and ordered build with "yea, looks great, continue"; PRD/spec/checklist extract that same approved content without another sign-off.
 - External credentials and iPhone access are not yet established. Build code and labelled sample exploration may proceed; no live milestone can be marked complete without its actual evidence.
+
+- The learner explicitly selected Gemini API keys instead of the originally proposed Claude. The intent adapter and environment use @google/genai with stateless structured output.

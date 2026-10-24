@@ -33,7 +33,7 @@ Google sign-in identifies a member. Calendar connection is separate and optional
 
 ### Requests and replies
 
-An ask has one activity/date/duration. Default buffers are 15 minutes. Vague requests and ambiguous groups/requesters ask instead of guessing. Claude interprets language; code chooses time windows. Warm templates use the selected valid slots. Venn never sends the draft to friends automatically.
+An ask has one activity/date/duration. Default buffers are 15 minutes. Vague requests and ambiguous groups/requesters ask instead of guessing. Gemini interprets language; code chooses time windows. Warm templates use the selected valid slots. Venn never sends the draft to friends automatically.
 
 ### Cards and sharing
 

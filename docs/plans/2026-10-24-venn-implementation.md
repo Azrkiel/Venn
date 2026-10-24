@@ -8,9 +8,9 @@ date: 2026-10-24
 
 **Goal:** Build Venn end to end so a small friend group can find real shared free time, choose a warm reply, and keep using the flow after the hackathon.
 
-**Architecture:** One Next.js application serves the mobile web surfaces, Shortcut API, calendar integration, and Photon webhook. Claude interprets scheduling language; deterministic code calculates availability and ranks options. A single Postgres database stores identity, permissions, groups, normalized requests, and votes, with the same database supporting persistent bot state.
+**Architecture:** One Next.js application serves the mobile web surfaces, Shortcut API, calendar integration, and Photon webhook. Gemini interprets scheduling language; deterministic code calculates availability and ranks options. A single Postgres database stores identity, permissions, groups, normalized requests, and votes, with the same database supporting persistent bot state.
 
-**Proposed stack:** TypeScript, Next.js App Router, React, Tailwind CSS, Auth.js with its Prisma adapter, Prisma/Postgres on Neon, Google Calendar API, Anthropic SDK, Luxon, Photon through Chat SDK, Vitest, and Playwright. Vercel hosts the live integration.
+**Proposed stack:** TypeScript, Next.js App Router, React, Tailwind CSS, Auth.js with its Prisma adapter, Prisma/Postgres on Neon, Google Calendar API, Google GenAI SDK, Luxon, Photon through Chat SDK, Vitest, and Playwright. Vercel hosts the live integration.
 
 The learner approved this scope, stack, and build order with "yea, looks great, continue". This document describes implementation work, not completed application code. `plan.md` remains the original product source. New choices are labelled below; clear approval of the relevant displayed design is required before application implementation under the installed planning workflows.
 
@@ -74,7 +74,7 @@ Venn/
       calendar/client.ts              calendarList, freeBusy, explicit events.insert
       calendar/token-vault.ts          Authenticated encryption for grant secrets
       scheduling/types.ts             Inputs, intervals, result/state types
-      scheduling/intent.ts            Claude extraction + semantic validation
+      scheduling/intent.ts            Gemini extraction + semantic validation
       scheduling/windows.ts           Zoned date/window -> UTC, DST ambiguity checks
       scheduling/rank.ts              Pure slot generation and ranking
       scheduling/draft.ts             Warm replies from validated slot IDs/times
@@ -140,7 +140,7 @@ Retain the original product identity and the rule that Venn never sends the orga
 | Database | Neon Postgres + Prisma | Relational constraints for members/votes and transactions for state changes |
 | Bot state | `@chat-adapter/state-pg` | Reuse Postgres; avoid an additional Redis service |
 | Calendar | Google Calendar REST APIs via Google's Node client | Availability from selected calendars; incremental permission for owner writes |
-| Language parsing | `@anthropic-ai/sdk` with supported structured output | Interpret the ask only; no tools, calendar access, auth decisions, or slot generation |
+| Language parsing | `@google/genai` with supported structured output | Interpret the ask only; no tools, calendar access, auth decisions, or slot generation |
 | Time | Luxon | Interpret local dates in explicit IANA zones and convert to UTC |
 | Messages | `chat` + `@photon-ai/chat-adapter-imessage` | Cloud DM adapter behind a narrow delivery interface |
 | Cards | `next/og` ImageResponse | Server-generated PNG, shared result data, no screenshot ingestion |
@@ -168,7 +168,7 @@ No vector database, RAG, autonomous agent loop, microservices, or durable raw-me
                                                 |
                           ambiguous / unmatched +--> [ask; no calendar guess]
                                                 v
-                                  [Claude: activity + date + duration]
+                                  [Gemini: activity + date + duration]
                                                 |
                        vague / refused / timeout +--> [clarify / retry visibly]
                                                 v
@@ -289,7 +289,7 @@ type Candidate = {
 
 Validate Intake with Zod: UTF-8 body <= 8KB, text 1–2000 characters, ISO timestamp, bounded group/member IDs. The server supplies receipt time for forwarded messages and validates Shortcut times against a sensible skew. Resolve user identity from auth, never from JSON. Activity is an enum, not an unrestricted string that could retain the original message.
 
-Claude sees the message, receipt date/time, and organizer timezone. It does not receive contact lists, OAuth tokens, event names, or calendar busy intervals. Treat the text as data, use schema-constrained extraction, and validate date/duration after decoding. Configure a supported model through `ANTHROPIC_MODEL`; choose and smoke-test it before recording the exact model in the spec.
+Gemini sees the message, receipt date/time, and organizer timezone. It does not receive contact lists, OAuth tokens, event names, or calendar busy intervals. Treat the text as data, use schema-constrained extraction, and validate date/duration after decoding. Configure a supported model through `GEMINI_MODEL`; choose and smoke-test it before recording the exact model in the spec.
 
 Permit only 15–240 minute durations in 15-minute increments. Proposed defaults: coffee 30, lunch 60, dinner 90, hangout 60. Unknown activity without explicit duration asks a question. Vague dates ask a question. Never resolve a group or person's identity from model guesses.
 
@@ -547,7 +547,7 @@ The future `devpost/checklist.md` will carry approved PRD/spec section reference
 ### Slice 4 — interpret a real ask and choose a warm reply
 
 - [ ] Define the structured Intent schema and tests for explicit lunch tomorrow, vague day, no scheduling intent, model refusal/timeout, out-of-range duration, malformed output, and text containing instructions to ignore the schema.
-- [ ] Implement `parseIntent(text, receivedAt, zone)` using the installed Anthropic SDK's supported structured-output interface. Semantic validation produces a typed clarification rather than a fabricated date.
+- [ ] Implement `parseIntent(text, receivedAt, zone)` using the installed Google GenAI SDK's supported structured-output interface. Semantic validation produces a typed clarification rather than a fabricated date.
 - [ ] Implement `resolveWindow(intent, receivedAt, zone)` in `windows.ts`, with tests for New York/London date differences, midnight receipts, spring-forward gaps, fall-back ambiguity, and activity-window exhaustion.
 - [ ] Implement `createRequest(ownerId, intake)` around the already-working group/calendar/rank services. Store only normalized intent, expected participants, slots and expiry. Implement warm template drafts from selected slot IDs.
 - [ ] Render the private 1080x1350 card plus an accessible HTML equivalent. Choose/copy a draft and cancel a request. Inspect logs/database to verify original text was not retained.
@@ -622,7 +622,7 @@ The future `devpost/checklist.md` will carry approved PRD/spec section reference
 
 ## 9. Configuration and operating limits
 
-Plan these server-only variables in `.env.example`: `DATABASE_URL`, migration connection configuration required by the chosen Prisma release, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_REDIRECT_URI`, `TOKEN_ENCRYPTION_KEY`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `IMESSAGE_LOCAL=false`, `IMESSAGE_PROJECT_ID`, `IMESSAGE_PROJECT_SECRET`, `IMESSAGE_WEBHOOK_SECRET`, and `APP_BASE_URL`. The Calendar OAuth flow may reuse the same Google client registration while retaining separate routes/state/scopes. None of these secrets goes in a `NEXT_PUBLIC_` variable.
+Plan these server-only variables in `.env.example`: `DATABASE_URL`, migration connection configuration required by the chosen Prisma release, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET`, `GOOGLE_CALENDAR_REDIRECT_URI`, `TOKEN_ENCRYPTION_KEY`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `IMESSAGE_LOCAL=false`, `IMESSAGE_PROJECT_ID`, `IMESSAGE_PROJECT_SECRET`, `IMESSAGE_WEBHOOK_SECRET`, and `APP_BASE_URL`. The Calendar OAuth flow may reuse the same Google client registration while retaining separate routes/state/scopes. None of these secrets goes in a `NEXT_PUBLIC_` variable.
 
 Add `CRON_SECRET` when enabling deployed cleanup. Logical expiry blocks reads at 48 hours; daily physical cleanup may lag by up to another 24 hours under normal operation. Failed cleanup is monitored and retried. Provider backups have their own lifecycle. Do not describe this as guaranteed erasure at exactly 48 hours.
 
@@ -678,7 +678,7 @@ Approve the scope/design before scaffolding the app. Carry accepted decisions in
 - [Google Calendar scopes](https://developers.google.com/workspace/calendar/api/auth)
 - [Google freeBusy API](https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query)
 - [Google web-server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server)
-- [Claude structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+- [Gemini structured outputs](https://ai.google.dev/gemini-api/docs/structured-output)
 - [Luxon API](https://moment.github.io/luxon/api-docs/index.html)
 - [Photon adapter](https://chat-sdk.dev/adapters/vendor-official/photon)
 - [Chat SDK Postgres state](https://chat-sdk.dev/adapters/official/postgres)

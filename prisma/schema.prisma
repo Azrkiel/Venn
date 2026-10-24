@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  timezone      String    @default("America/New_York")
+  accounts      Account[]
+  sessions      Session[]
+  calendarGrant CalendarGrant?
+  ownedGroups   Group[]
+  memberships   Membership[]
+  requests      SchedulingRequest[]
+  devices       DeviceToken[]
+  phoneLink     PhoneLink?
+  oauthStates   OAuthState[]
+  pairings      PairingChallenge[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+  @@id([identifier, token])
+}
+
+model CalendarGrant {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  encryptedAccess  String
+  encryptedRefresh String?
+  scopes           String[]
+  expiresAt        DateTime
+  keyVersion       Int      @default(1)
+  needsReconnect   Boolean  @default(false)
+  refreshLockUntil DateTime?
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendars        SelectedCalendar[]
+}
+
+model SelectedCalendar {
+  id           String @id @default(cuid())
+  grantId      String
+  calendarId   String
+  name         String
+  enabled      Boolean @default(true)
+  writable     Boolean @default(false)
+  grant        CalendarGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  @@unique([grantId, calendarId])
+}
+
+model Group {
+  id          String @id @default(cuid())
+  name        String
+  ownerId     String
+  createdAt   DateTime @default(now())
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships Membership[]
+  invites     Invite[]
+  invitedPeople InvitedPerson[]
+  requests    SchedulingRequest[]
+}
+
+model Membership {
+  id          String @id @default(cuid())
+  groupId     String
+  userId      String
+  displayName String
+  timezone    String @default("America/New_York")
+  group       Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([groupId, userId])
+}
+
+model InvitedPerson {
+  id      String @id @default(cuid())
+  groupId String
+  label   String
+  group   Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model Invite {
+  id          String @id @default(cuid())
+  groupId     String
+  tokenDigest String @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  group       Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model SchedulingRequest {
+  id                 String @id @default(cuid())
+  ownerId            String
+  groupId            String
+  requesterMemberId  String
+  activity           String
+  localDate          String
+  durationMinutes    Int
+  timezone           String
+  state              String @default("ready")
+  slotVersion        Int @default(1)
+  selectedSlotId     String?
+  createdAt          DateTime @default(now())
+  expiresAt          DateTime
+  deliveryState      String @default("not_requested")
+  owner              User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  group              Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  participants       RequestParticipant[]
+  slots              Slot[]
+  shares             ShareGrant[]
+  votes              Vote[]
+  eventAction        EventAction?
+  notifications      CompletionNotice[]
+  @@index([ownerId, createdAt])
+  @@index([expiresAt])
+}
+
+model RequestParticipant {
+  id               String @id @default(cuid())
+  requestId        String
+  participantId    String
+  userId           String?
+  displayName      String
+  request          SchedulingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@unique([requestId, participantId])
+}
+
+model Slot {
+  id         String @id @default(cuid())
+  requestId  String
+  ordinal    Int
+  start      DateTime
+  end        DateTime
+  freeIds    String[]
+  busyIds    String[]
+  unknownIds String[]
+  request    SchedulingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  votes      Vote[]
+  @@unique([requestId, ordinal])
+}
+
+model ShareGrant {
+  id          String @id @default(cuid())
+  requestId   String
+  tokenDigest String @unique
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  request     SchedulingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+}
+
+model Vote {
+  id        String @id @default(cuid())
+  requestId String
+  slotId    String
+  voterKey  String
+  guestName String?
+  isGuest   Boolean
+  choice    String
+  updatedAt DateTime @updatedAt
+  request   SchedulingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  slot      Slot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  @@unique([requestId, voterKey, slotId])
+}
+
+model DeviceToken {
+  id          String @id @default(cuid())
+  ownerId     String
+  tokenDigest String @unique
+  label       String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model PhoneLink {
+  id             String @id @default(cuid())
+  userId         String @unique
+  providerSender String @unique
+  threadId       String
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PairingChallenge {
+  id          String @id @default(cuid())
+  ownerId     String
+  codeDigest  String @unique
+  expiresAt   DateTime
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model OAuthState {
+  id                String @id @default(cuid())
+  stateDigest       String @unique
+  userId            String
+  encryptedVerifier String
+  purpose           String @default("calendar")
+  requestId         String?
+  expiresAt         DateTime
+  user              User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProcessedDelivery {
+  id        String @id @default(cuid())
+  messageId String
+  projectId String
+  state     String
+  requestId String?
+  expiresAt DateTime
+  @@unique([projectId, messageId])
+}
+
+model EventAction {
+  id           String @id @default(cuid())
+  ownerId      String
+  requestId    String @unique
+  slotId       String
+  eventId      String @unique
+  calendarId   String
+  state        String
+  htmlLink     String?
+  createdAt    DateTime @default(now())
+  request      SchedulingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@unique([ownerId, requestId])
+}
+
+model CompletionNotice {
+  id          String @id @default(cuid())
+  requestId   String
+  slotVersion Int
+  state       String @default("pending")
+  request     SchedulingRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  @@unique([requestId, slotVersion])
+}
+
+model RateLimitBucket {
+  key       String @id
+  count     Int
+  expiresAt DateTime
+}

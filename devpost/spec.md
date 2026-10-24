@@ -18,13 +18,13 @@ The complete approved ASCII flow, annotated file tree, contracts, schemas and or
 
 ## Stack
 
-TypeScript, Next.js App Router/React/Tailwind; Auth.js/Prisma; Postgres; Google Calendar API; Anthropic SDK structured extraction; Luxon; Photon through Chat SDK; next/og cards; Vitest/Playwright; Vercel. Exact installed versions are recorded in package-lock.json as the scaffold is verified. Primary documentation links are in the roadmap's references.
+TypeScript, Next.js App Router/React/Tailwind; Auth.js/Prisma; Postgres; Google Calendar API; Google GenAI SDK structured extraction; Luxon; Photon through Chat SDK; next/og cards; Vitest/Playwright; Vercel. Exact installed versions are recorded in package-lock.json as the scaffold is verified. Primary documentation links are in the roadmap's references.
 
 ## Components
 
 ### Scheduling core
 
-Implements `prd.md > Group overlap` and `prd.md > Requests and replies`. Pure interval math receives validated UTC ranges; required members must be known-free. Relative dates use explicit IANA zones, with ambiguity surfaced as clarification. Claude output passes semantic validation; it never supplies authentication or free/busy facts.
+Implements `prd.md > Group overlap` and `prd.md > Requests and replies`. Pure interval math receives validated UTC ranges; required members must be known-free. Relative dates use explicit IANA zones, with ambiguity surfaced as clarification. Gemini output passes semantic validation; it never supplies authentication or free/busy facts.
 
 ### Identity and calendar connections
 
@@ -62,7 +62,7 @@ The curriculum requires an accessible video and public repository, not a deploym
 
 ## External Services and Dependencies
 
-Google Cloud OAuth/Calendar, Anthropic, Photon, Neon/Postgres and Vercel account configuration is not present yet. Never request secrets in chat. Document variable names in `.env.example`, test substitutes in CI, and actual integration evidence separately.
+Google Cloud OAuth/Calendar, Gemini, Photon, Neon/Postgres and Vercel account configuration is not present yet. Never request secrets in chat. Document variable names in `.env.example`, test substitutes in CI, and actual integration evidence separately.
 
 ## Failure Modes
 

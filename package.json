@@ -19,6 +19,7 @@
     "db:check": "tsx scripts/smoke-database.ts",
     "smoke:calendar": "tsx scripts/smoke-calendar.ts",
     "smoke:gemini": "tsx scripts/smoke-gemini.ts",
+    "smoke:photon": "tsx scripts/smoke-photon.ts",
     "purge:expired": "tsx scripts/purge-expired.ts"
   },
   "engines": {

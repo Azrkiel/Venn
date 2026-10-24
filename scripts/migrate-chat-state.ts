@@ -1,9 +1,8 @@
 import { Pool } from 'pg';
 import { postgresSchemaStatements } from '@chat-adapter/state-pg';
-import { loadEnvConfig } from '@next/env';
+import './env';
 
-loadEnvConfig(process.cwd());
-const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
+const url = process.env.DIRECT_URL || process.env.DATABASE_URL;
 if (!url) throw new Error('Configure DIRECT_URL or DATABASE_URL before migrating bot state.');
 const client = new Pool({ connectionString: url, max: 1 });
 try {

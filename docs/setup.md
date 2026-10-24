@@ -12,7 +12,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. Keep `.env.local` out of git. Enter credentials into that local file or the deployment's environment settings, not into chat. Restart the development server after changing configuration.
+Open http://localhost:3000 (not 127.0.0.1: Next normalizes loopback hosts to `localhost`, so Google sign-in only works there). Keep `.env.local` out of git. Enter credentials into that local file or the deployment's environment settings, not into chat. Restart the development server after changing configuration.
 
 If this machine reports `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, enable Node's installed system trust for that terminal with `$env:NODE_USE_SYSTEM_CA = '1'`, then retry. This was verified on the development machine. Do not disable TLS certificate verification.
 
@@ -29,8 +29,8 @@ A Gemini API key cannot grant access to someone's calendar. Calendar access need
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com/), enable Google Calendar API, and configure the Google Auth Platform consent screen.
 2. For a small pilot, configure the actual test users. Check Google's current consent/verification requirements before expanding the audience.
 3. Create an OAuth client for a web application. Register these development redirect URLs exactly:
-   - `http://127.0.0.1:3000/api/auth/callback/google`
-   - `http://127.0.0.1:3000/api/calendar/callback`
+   - `http://localhost:3000/api/auth/callback/google`
+   - `http://localhost:3000/api/calendar/callback`
 4. Set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`. The Calendar flow can reuse these; the `GOOGLE_CALENDAR_CLIENT_ID` and `GOOGLE_CALENDAR_CLIENT_SECRET` overrides are optional and may remain blank.
 5. Generate separate local `AUTH_SECRET` and `TOKEN_ENCRYPTION_KEY` values. For either, `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"` generates suitable random bytes. Keep the two values distinct. Losing the encryption key requires reconnecting calendars; never overwrite it casually.
 6. Open `/setup`, sign in, then connect Calendar. Select the calendars to check; newly discovered calendars start excluded. The consent copy discloses availability plus calendar-list metadata access.

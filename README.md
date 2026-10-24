@@ -35,7 +35,7 @@ Copy-Item .env.example .env.local
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. On machines that report `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, set `$env:NODE_USE_SYSTEM_CA = '1'` in that terminal first.
+Open http://localhost:3000. On machines that report `UNABLE_TO_VERIFY_LEAF_SIGNATURE`, set `$env:NODE_USE_SYSTEM_CA = '1'` in that terminal first.
 
 For a local database, any Postgres works. With Docker:
 

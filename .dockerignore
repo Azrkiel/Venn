@@ -1,0 +1,12 @@
+.git
+node_modules
+.next
+.env
+.env.*
+!.env.example
+test-results
+playwright-report
+coverage
+*.tsbuildinfo
+devpost/learner-profile.md
+.artifacts

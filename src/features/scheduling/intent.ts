@@ -5,7 +5,7 @@ import type { Activity, SchedulingIntent } from './types';
 
 export type IntentModelInput = { text: string; receivedAt: string; zone: string };
 export type IntentExtractor = (input: IntentModelInput) => Promise<unknown>;
-export type IntentErrorCode = 'INVALID_INPUT' | 'MODEL_NOT_CONFIGURED' | 'MODEL_UNAVAILABLE' | 'INVALID_MODEL_OUTPUT';
+export type IntentErrorCode = 'INVALID_INPUT' | 'MODEL_NOT_CONFIGURED' | 'MODEL_UNAVAILABLE' | 'INVALID_MODEL_OUTPUT' | 'MODEL_BUSY';
 
 export class IntentParseError extends Error {
   constructor(public readonly code: IntentErrorCode, message: string) {
@@ -90,6 +90,9 @@ export async function parseIntent(
     return validateOutput(await extract({ text, receivedAt, zone }));
   } catch (error) {
     if (error instanceof IntentParseError) throw error;
+    if (typeof error === 'object' && error !== null && 'status' in error && error.status === 429) {
+      throw new IntentParseError('MODEL_BUSY', 'Venn is at its request limit right now. Try again in a minute.');
+    }
     // Provider error messages and causes can contain the submitted ask or credentials.
     throw new IntentParseError('MODEL_UNAVAILABLE', 'Venn could not interpret that request. Please try again.');
   }

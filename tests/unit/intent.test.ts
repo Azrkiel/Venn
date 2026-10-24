@@ -45,6 +45,10 @@ describe('parseIntent', () => {
     await expect(parseIntent('private original ask', receivedAt, zone, async () => { throw new Error('private original ask; secret token'); }))
       .rejects.toMatchObject({ code: 'MODEL_UNAVAILABLE', message: 'Venn could not interpret that request. Please try again.' });
   });
+  it('reports a provider rate limit as busy without leaking provider text', async () => {
+    await expect(parseIntent('private original ask', receivedAt, zone, async () => { throw Object.assign(new Error('quota; private original ask'), { status: 429 }); }))
+      .rejects.toMatchObject({ code: 'MODEL_BUSY', message: 'Venn is at its request limit right now. Try again in a minute.' });
+  });
   it('refuses invalid receipt timestamps, timezones and empty/long asks before calling the provider', async () => {
     const extract = vi.fn(async () => lunch);
     await expect(parseIntent('lunch', 'not-a-date', zone, extract)).rejects.toMatchObject({ code: 'INVALID_INPUT' });

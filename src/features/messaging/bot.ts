@@ -32,26 +32,30 @@ const envelopeSchema = z.object({
 });
 const textSchema = z.object({ type: z.literal('text'), text: z.string().min(1).max(2_000) });
 type VerifiedMessage = { messageId: string; providerSender: string; threadId: string; text: string };
+type Ignored = { ignored: string };
 
-function parseMessage(rawBody: string): VerifiedMessage | null {
+// Reason codes only: never the payload, text, sender or thread identifiers.
+const logDelivery = (outcome: string) => console.info(`[photon] ${outcome}`);
+
+function parseMessage(rawBody: string): VerifiedMessage | Ignored {
   let raw: unknown;
   try { raw = JSON.parse(rawBody); }
   catch { throw new HttpError(400, 'INVALID_PHOTON_BODY', 'The message delivery could not be read.'); }
   const parsed = envelopeSchema.safeParse(raw);
-  if (!parsed.success) return null;
+  if (!parsed.success) return { ignored: 'unrecognized-envelope' };
   const { event, message, space } = parsed.data;
-  if (event !== 'messages' || message.direction !== 'inbound') return null;
+  if (event !== 'messages' || message.direction !== 'inbound') return { ignored: 'not-inbound-message' };
   const phone = space.phone ?? message.space?.phone;
   // The line separator and prefix match the installed adapter's encodeThreadId.
   const threadId = `imessage:${space.id}${phone ? `~${phone}` : ''}`;
-  if (!isDirectThread(threadId)) return null;
+  if (!isDirectThread(threadId)) return { ignored: 'not-direct-thread' };
   let content = textSchema.safeParse(message.content);
   if (!content.success) {
     const reply = z.object({ type: z.literal('reply'), content: textSchema }).safeParse(message.content);
-    if (!reply.success) return null;
+    if (!reply.success) return { ignored: 'not-text' };
     content = textSchema.safeParse(reply.data.content);
   }
-  if (!content.success || !content.data.text.trim()) return null;
+  if (!content.success || !content.data.text.trim()) return { ignored: 'empty-text' };
   return { messageId: message.id, providerSender: message.sender.id, threadId, text: content.data.text };
 }
 
@@ -79,12 +83,12 @@ async function processVerifiedMessage(message: VerifiedMessage): Promise<{ state
   const pair = command.match(/^pair ([A-Za-z0-9_-]{43})$/i);
   if (pair) {
     const ownerId = await completePhoneLink(pair[1], { providerSender: message.providerSender, threadId: message.threadId });
-    if (!ownerId) return { state: 'ignored' };
+    if (!ownerId) return { state: 'pair_code_invalid' };
     await sendPairedText(ownerId, `you're paired with Venn. your calendar results stay in this private chat. start a plan: ${liveLink()}`);
     return { state: 'paired' };
   }
   const owner = await getDb().phoneLink.findUnique({ where: { providerSender: message.providerSender }, select: { userId: true, threadId: true } });
-  if (!owner || owner.threadId !== message.threadId) return { state: 'ignored' };
+  if (!owner || owner.threadId !== message.threadId) return { state: 'unpaired_sender' };
   await consumeRateLimit(`photon:${owner.userId}`, 15);
   if (/^(?:lemme check|check)$/i.test(command)) {
     try {
@@ -146,11 +150,12 @@ export async function handlePhotonWebhook(request: Request, schedule?: (work: ()
   try {
     if (!photonConfigured()) throw new HttpError(503, 'PHOTON_NOT_CONFIGURED', 'Connect Photon before using Venn in Messages.');
     const rawBody = await rawBodyWithinLimit(request);
-    verifyPhotonSignature(request, rawBody, process.env.IMESSAGE_WEBHOOK_SECRET!);
+    try { verifyPhotonSignature(request, rawBody, process.env.IMESSAGE_WEBHOOK_SECRET!); }
+    catch (error) { logDelivery('rejected: invalid signature'); throw error; }
     const event = request.headers.get('x-spectrum-event');
-    if (event && event !== 'messages') return new Response(null, { status: 204 });
+    if (event && event !== 'messages') { logDelivery('ignored: event-header'); return new Response(null, { status: 204 }); }
     const message = parseMessage(rawBody);
-    if (!message) return new Response(null, { status: 204 });
+    if ('ignored' in message) { logDelivery(`ignored: ${message.ignored}`); return new Response(null, { status: 204 }); }
     let claimed: { id: string };
     try {
       claimed = await getDb().processedDelivery.create({ data: { messageId: message.messageId,
@@ -162,9 +167,11 @@ export async function handlePhotonWebhook(request: Request, schedule?: (work: ()
     const runDelivery = async () => {
       try {
         const outcome = await processVerifiedMessage(message);
+        logDelivery(`processed: ${outcome.state}`);
         await getDb().processedDelivery.update({ where: { id: claimed.id }, data: outcome });
-      } catch {
+      } catch (error) {
         // No raw exception, provider payload or input text is logged or retained.
+        logDelivery(`failed: ${error instanceof HttpError ? error.code : 'unexpected'}`);
         try { await getDb().processedDelivery.update({ where: { id: claimed.id }, data: { state: 'failed' } }); }
         catch { /* A failed ID-only status update must not leak the original message through an unhandled rejection. */ }
       }

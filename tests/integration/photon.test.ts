@@ -1,0 +1,91 @@
+import { createHmac } from 'node:crypto';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { handlePhotonWebhook, verifyPhotonSignature } from '@/features/messaging/bot';
+import { sendOwnerResult } from '@/features/messaging/delivery';
+
+const { db, ownerRequest, pairedSend } = vi.hoisted(() => ({
+  db: { processedDelivery: { create: vi.fn(), update: vi.fn() }, phoneLink: { findUnique: vi.fn() },
+    schedulingRequest: { findMany: vi.fn(), updateMany: vi.fn() } },
+  ownerRequest: vi.fn(), pairedSend: vi.fn(),
+}));
+vi.mock('@/lib/db', () => ({ getDb: () => db }));
+vi.mock('@/features/requests/service', () => ({ getOwnerRequest: ownerRequest, selectSlot: vi.fn(), cancelRequest: vi.fn() }));
+vi.mock('@/features/requests/add', () => ({ addSelectedEvent: vi.fn() }));
+vi.mock('@/lib/rate-limit', () => ({ consumeRateLimit: vi.fn() }));
+const secret = 'test-signing-secret';
+const payload = (text = 'private-canary-text') => JSON.stringify({ event: 'messages',
+  message: { id: 'message1', direction: 'inbound', sender: { id: '+15551234567' }, content: { type: 'text', text } },
+  space: { id: 'iMessage;-;+15551234567', phone: '+15550000000' } });
+function signedRequest(body: string, timestamp = String(Math.floor(Date.now() / 1000))) {
+  const signature = `v0=${createHmac('sha256', secret).update(`v0:${timestamp}:${body}`).digest('hex')}`;
+  return new Request('https://venn.test/api/webhooks/photon', { method: 'POST', body,
+    headers: { 'x-spectrum-signature': signature, 'x-spectrum-timestamp': timestamp, 'x-spectrum-event': 'messages' } });
+}
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.stubEnv('IMESSAGE_PROJECT_ID', 'test-project'); vi.stubEnv('IMESSAGE_PROJECT_SECRET', 'test-project-secret');
+  vi.stubEnv('IMESSAGE_WEBHOOK_SECRET', secret); vi.stubEnv('DATABASE_URL', 'postgresql://not-connected.invalid/venn');
+  vi.stubEnv('APP_BASE_URL', 'https://venn.test');
+  db.processedDelivery.create.mockResolvedValue({ id: 'delivery1' }); db.processedDelivery.update.mockResolvedValue({});
+  db.phoneLink.findUnique.mockResolvedValue(null);
+});
+
+describe('Photon authenticity and retention', () => {
+  it('accepts the pinned adapter v0 HMAC but rejects unsigned, modified or stale bodies', () => {
+    const body = payload();
+    expect(() => verifyPhotonSignature(signedRequest(body), body, secret)).not.toThrow();
+    expect(() => verifyPhotonSignature(new Request('https://venn.test'), body, secret)).toThrowError(expect.objectContaining({ status: 401 }));
+    expect(() => verifyPhotonSignature(signedRequest(body), body + ' ', secret)).toThrowError(expect.objectContaining({ status: 401 }));
+    expect(() => verifyPhotonSignature(signedRequest(body, String(Math.floor(Date.now() / 1000) - 301)), body, secret))
+      .toThrowError(expect.objectContaining({ status: 401 }));
+  });
+  it('rejects unsigned input before reading identities or claiming processing', async () => {
+    const response = await handlePhotonWebhook(new Request('https://venn.test', { method: 'POST', body: payload() }));
+    expect(response.status).toBe(401); expect(db.processedDelivery.create).not.toHaveBeenCalled();
+    expect(db.phoneLink.findUnique).not.toHaveBeenCalled();
+  });
+  it('deduplicates a verified provider message before any private lookup or send', async () => {
+    db.processedDelivery.create.mockRejectedValue({ code: 'P2002' });
+    expect((await handlePhotonWebhook(signedRequest(payload()))).status).toBe(200);
+    expect(db.phoneLink.findUnique).not.toHaveBeenCalled(); expect(pairedSend).not.toHaveBeenCalled();
+  });
+  it('discards an unpaired scheduling message and never persists the raw-text canary', async () => {
+    const response = await handlePhotonWebhook(signedRequest(payload()));
+    expect(response.status).toBe(200);
+    expect(db.processedDelivery.create).toHaveBeenCalledWith({ data: expect.objectContaining({ projectId: 'test-project', messageId: 'message1' }) });
+    expect(JSON.stringify([db.processedDelivery.create.mock.calls, db.processedDelivery.update.mock.calls]))
+      .not.toContain('private-canary-text');
+    expect(ownerRequest).not.toHaveBeenCalled();
+  });
+  it('ignores group and outbound messages even when signed', async () => {
+    const group = JSON.parse(payload()); group.space.id = 'iMessage;+;group';
+    expect((await handlePhotonWebhook(signedRequest(JSON.stringify(group)))).status).toBe(204);
+    const outbound = JSON.parse(payload()); outbound.message.direction = 'outbound';
+    expect((await handlePhotonWebhook(signedRequest(JSON.stringify(outbound)))).status).toBe(204);
+    expect(db.processedDelivery.create).not.toHaveBeenCalled();
+  });
+  it('returns a safe setup error without credentials instead of creating an unofficial local bot', async () => {
+    vi.stubEnv('IMESSAGE_PROJECT_ID', '');
+    const response = await handlePhotonWebhook(signedRequest(payload()));
+    expect(response.status).toBe(503); expect(await response.text()).not.toContain(secret);
+  });
+});
+
+describe('owner-only delivery', () => {
+  it('sends only through the saved verified owner thread, never a caller recipient', async () => {
+    ownerRequest.mockResolvedValue({ id: 'req1', state: 'ready', activity: 'lunch', localDate: '2026-10-25',
+      timezone: 'America/New_York', slots: [], participants: [], draft: 'yes! lunch works' });
+    db.phoneLink.findUnique.mockResolvedValue({ userId: 'owner', threadId: 'imessage:iMessage;-;+15551234567~+15550000000' });
+    db.schedulingRequest.updateMany.mockResolvedValue({ count: 1 }); pairedSend.mockResolvedValue(undefined);
+    await sendOwnerResult('owner', 'req1', pairedSend);
+    expect(ownerRequest).toHaveBeenCalledWith('owner', 'req1');
+    expect(pairedSend).toHaveBeenCalledWith('imessage:iMessage;-;+15551234567~+15550000000', expect.stringContaining('yes! lunch works'));
+  });
+  it('refuses unpaired or invalidated results without a send', async () => {
+    ownerRequest.mockResolvedValue({ id: 'req1', state: 'retry_required', slots: [], draft: 'stale private draft' });
+    await expect(sendOwnerResult('owner', 'req1', pairedSend)).rejects.toMatchObject({ status: 409 });
+    expect(pairedSend).not.toHaveBeenCalled();
+    ownerRequest.mockResolvedValue({ id: 'req1', state: 'ready', slots: [], draft: 'private draft' }); db.phoneLink.findUnique.mockResolvedValue(null);
+    await expect(sendOwnerResult('owner', 'req1', pairedSend)).rejects.toMatchObject({ status: 409, code: 'PHONE_NOT_PAIRED' });
+  });
+});

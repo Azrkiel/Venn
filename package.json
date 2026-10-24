@@ -1,0 +1,68 @@
+{
+  "name": "venn",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1",
+    "build": "prisma generate && next build",
+    "start": "next start --hostname 127.0.0.1",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "playwright test",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:check": "tsx scripts/smoke-database.ts",
+    "smoke:calendar": "tsx scripts/smoke-calendar.ts",
+    "smoke:gemini": "tsx scripts/smoke-gemini.ts",
+    "smoke:photon": "tsx scripts/smoke-photon.ts",
+    "purge:expired": "tsx scripts/purge-expired.ts"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "2.11.3",
+    "@chat-adapter/state-pg": "4.43.0",
+    "@fontsource/fraunces": "5.3.0",
+    "@fontsource/inter": "5.3.0",
+    "@google/genai": "2.31.0",
+    "@photon-ai/chat-adapter-imessage": "3.2.0",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "chat": "4.43.0",
+    "googleapis": "188.0.0",
+    "lucide-react": "1.61.0",
+    "luxon": "3.7.2",
+    "next": "16.4.2",
+    "next-auth": "5.0.0-beta.32",
+    "pg": "8.23.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/luxon": "3.7.6",
+    "@types/node": "26.6.5",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "dotenv": "18.0.9",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.2",
+    "prisma": "7.10.1",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5"
+  },
+  "overrides": {
+    "@opentelemetry/core": "^2.8.0"
+  }
+}

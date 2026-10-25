@@ -9,7 +9,7 @@ export type RequestContext = {
   members: { id: string; userId: string | null; displayName: string }[];
 };
 type Input = {
-  ownerId: string; requesterMemberId: string; group: RequestContext;
+  ownerId: string; requesterMemberId?: string; group: RequestContext | null;
   text: string; receivedAt: string; timezone: string;
 };
 type Dependencies = {
@@ -22,13 +22,21 @@ export type PreparedRequest = {
   participants: RequestContext['members']; draft: string; checkedAt: string;
 };
 
+export const SOLO_ID = 'self';
+
 export async function prepareRequest(input: Input, services: Dependencies): Promise<PreparedRequest> {
-  if (input.group.ownerId !== input.ownerId) throw new HttpError(403, 'FORBIDDEN', 'This group belongs to another organizer.');
-  const organizer = input.group.members.find(member => member.userId === input.ownerId);
-  const requester = input.group.members.find(member => member.id === input.requesterMemberId && member.userId);
-  if (!organizer || !requester) throw new HttpError(422, 'REQUESTER_REQUIRED', 'Choose the connected group member who is asking.');
+  // Solo: the organizer is the only participant; nobody else's calendar is read.
+  const people = input.group?.members ?? [{ id: SOLO_ID, userId: input.ownerId, displayName: 'You' }];
+  let required = [SOLO_ID];
+  if (input.group) {
+    if (input.group.ownerId !== input.ownerId) throw new HttpError(403, 'FORBIDDEN', 'This group belongs to another organizer.');
+    const organizer = people.find(member => member.userId === input.ownerId);
+    const requester = people.find(member => member.id === input.requesterMemberId && member.userId);
+    if (!organizer || !requester) throw new HttpError(422, 'REQUESTER_REQUIRED', 'Choose the connected group member who is asking.');
+    required = [organizer.id, requester.id];
+  }
   const intent = await services.parse(input.text, input.receivedAt, input.timezone);
-  const base = { intent, timezone: input.timezone, participants: input.group.members, slots: [] as Candidate[],
+  const base = { intent, timezone: input.timezone, participants: people, slots: [] as Candidate[],
     draft: '', checkedAt: input.receivedAt };
   if (intent.needsClarification) return { ...base, state: 'needs_clarification' };
   let resolved;
@@ -38,8 +46,8 @@ export async function prepareRequest(input: Input, services: Dependencies): Prom
     throw error;
   }
   const members: Availability[] = [];
-  for (let offset = 0; offset < input.group.members.length; offset += 4) {
-    const batch = input.group.members.slice(offset, offset + 4);
+  for (let offset = 0; offset < people.length; offset += 4) {
+    const batch = people.slice(offset, offset + 4);
     const results = await Promise.allSettled(batch.map(async member => member.userId
       ? services.availability(member.userId, resolved.queryWindow)
       : { memberId: member.id, state: 'unknown' as const, busy: [] }));
@@ -47,7 +55,6 @@ export async function prepareRequest(input: Input, services: Dependencies): Prom
       ? { ...result.value, memberId: batch[index].id }
       : { memberId: batch[index].id, state: 'unknown', busy: [] }));
   }
-  const required = [organizer.id, requester.id];
   if (required.some(id => members.find(member => member.memberId === id)?.state !== 'known')) {
     return { ...base, state: 'retry_required' };
   }

@@ -23,6 +23,8 @@ async function action<T>(path: string, method = 'POST', value?: unknown): Promis
   return result;
 }
 
+const SOLO = 'solo';
+
 function slotTime(start: number, end: number, zone: string) {
   return `${DateTime.fromMillis(start, { zone }).toFormat('h:mm a').toLowerCase()}–${DateTime.fromMillis(end, { zone }).toFormat('h:mm a').toLowerCase()}`;
 }
@@ -31,8 +33,8 @@ export function LiveClient({ initialGroups, initialRequest, timezone: initialZon
   initialGroups: Group[]; initialRequest: OwnerRequest | null; timezone: string; modelReady: boolean; initialError: string; calendarResult: string;
 }) {
   const [groups, setGroups] = useState(initialGroups);
-  const [groupId, setGroupId] = useState(initialRequest?.groupId ?? initialGroups.find(group => group.isOwner)?.id ?? '');
-  const group = groups.find(item => item.id === groupId);
+  const [groupId, setGroupId] = useState(initialRequest?.groupId ?? SOLO);
+  const group = groupId === SOLO ? undefined : groups.find(item => item.id === groupId);
   const [requesterId, setRequesterId] = useState('');
   const requester = group?.members.find(member => member.id === requesterId)
     ?? group?.members.find(member => !member.isYou) ?? group?.members.find(member => member.isYou);
@@ -82,10 +84,10 @@ export function LiveClient({ initialGroups, initialRequest, timezone: initialZon
 
   async function findOptions(event: React.FormEvent) {
     event.preventDefault();
-    if (!group || !requester) { setError('Choose a group and the person asking first.'); return; }
+    if (group && !requester) { setError('Choose the person asking first.'); return; }
     await perform(async () => {
       const result = await action<OwnerRequest | { state: 'needs_clarification'; intent: { clarificationReason: string | null } }>('/api/requests', 'POST', {
-        groupId: group.id, requesterMemberId: requester.id, text: ask, timezone,
+        ...(group && requester ? { groupId: group.id, requesterMemberId: requester.id } : {}), text: ask, timezone,
       });
       if (result.state === 'needs_clarification') {
         setNotice('Please make the activity, date, and approximate duration clearer, then check again.');
@@ -113,39 +115,40 @@ export function LiveClient({ initialGroups, initialRequest, timezone: initialZon
     {!modelReady && <p className={styles.status}>Gemini needs to be configured before Venn can interpret live requests. <Link className={styles.link} href="/setup">See connection setup</Link>.</p>}
 
     {!request && <>
-      {groups.some(item => item.isOwner) ? <form className={styles.form} onSubmit={findOptions}>
-        <label className={styles.field}>Who&apos;s making plans?
+      <form className={styles.form} onSubmit={findOptions}>
+        {groups.some(item => item.isOwner) && <label className={styles.field}>Who&apos;s making plans?
           <select className={styles.select} value={groupId} onChange={event => { setGroupId(event.target.value); setRequesterId(''); setInvitePath(''); }}>
+            <option value={SOLO}>Just me</option>
             {groups.filter(item => item.isOwner).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
-        </label>
+        </label>}
         <label className={styles.field}>What&apos;s the plan?
           <textarea className={styles.textarea} value={ask} onChange={event => setAsk(event.target.value)} maxLength={2000} required
             placeholder="e.g. free for lunch tomorrow? about an hour" />
-          <span className={styles.hint}>Only this scheduling ask is sent for interpretation. Calendar checks use busy/free time.</span>
+          <span className={styles.hint}>Only this scheduling ask is sent for interpretation. Calendar checks use busy/free time.{!group && ' Just me checks only your own calendar.'}</span>
         </label>
         <details className={styles.details}>
-          <summary>{requester ? `${requester.isYou ? 'You' : requester.displayName} asked · ${timezone.replaceAll('_', ' ')}` : 'Requester and timezone'}</summary>
+          <summary>{group && requester ? `${requester.isYou ? 'You' : requester.displayName} asked · ${timezone.replaceAll('_', ' ')}` : `Timezone · ${timezone.replaceAll('_', ' ')}`}</summary>
           <div className={styles.detailsBody}>
-            <label className={styles.field}>Who is asking?
+            {group && <label className={styles.field}>Who is asking?
               <select className={styles.select} value={requester?.id ?? ''} onChange={event => setRequesterId(event.target.value)}>
                 {group?.members.map(member => <option key={member.id} value={member.id}>{member.isYou ? 'You' : member.displayName}{member.connected ? '' : ' · Calendar not connected'}</option>)}
               </select>
-            </label>
+            </label>}
             <label className={styles.field}>Your timezone<input className={styles.input} value={timezone} onChange={event => setTimezone(event.target.value)} required maxLength={100} /></label>
-            <p className={styles.hint}>You and the requester must both have known availability. Unconnected friends remain unknown.</p>
+            {group && <p className={styles.hint}>You and the requester must both have known availability. Unconnected friends remain unknown.</p>}
           </div>
         </details>
-        <button className={styles.button} disabled={busy || !modelReady || !ask.trim()}>{busy ? 'Checking calendars…' : 'Find a time together →'}</button>
-      </form> : <section className={styles.card}>
-        <h2>Start with a small group</h2>
-        <p className={styles.intro}>Give your lunch crew or friends a place to find shared time. You can invite them after creating it.</p>
-        {groups.length > 0 && <p className={styles.subtle}>You have joined {groups.map(item => item.name).join(', ')}. Their organizers create requests; you can create your own group below.</p>}
+        <button className={styles.button} disabled={busy || !modelReady || !ask.trim()}>{busy ? 'Checking your calendar…' : group ? 'Find a time together →' : 'Find a time →'}</button>
+      </form>
+      {!groups.some(item => item.isOwner) && <details className={styles.details} style={{ marginTop: 24 }}><summary>Plan with a group of friends</summary><div className={styles.detailsBody}>
+        <p className={styles.hint}>Give your lunch crew or friends a place to find shared time. You can invite them after creating it.</p>
+        {groups.length > 0 && <p className={styles.hint}>You have joined {groups.map(item => item.name).join(', ')}. Their organizers create requests; you can create your own group below.</p>}
         <form className={styles.form} onSubmit={event => { event.preventDefault(); void createGroup(); }}>
           <label className={styles.field}>Group name<input className={styles.input} value={newGroup} onChange={event => setNewGroup(event.target.value)} placeholder="Lunch crew" maxLength={60} required /></label>
           <button className={styles.button} disabled={busy || !newGroup.trim()}>{busy ? 'Creating…' : 'Create group'}</button>
         </form>
-      </section>}
+      </div></details>}
       {group?.isOwner && <details className={styles.details} style={{ marginTop: 24 }}>
         <summary>Group details &amp; invitations</summary>
         <div className={styles.detailsBody}>
@@ -166,16 +169,16 @@ export function LiveClient({ initialGroups, initialRequest, timezone: initialZon
 
     {request && <section aria-label="Calendar result">
       <h2 className={styles.sectionHeading}>{selected ? 'A good time, together.' : request.slots.length ? 'A few good windows.' : 'Let’s try another window.'}</h2>
-      <p className={styles.resultMeta}>{request.groupName} · {request.activity} · {DateTime.fromISO(request.localDate).toFormat('ccc, LLL d')} · {request.durationMinutes} min<br />
+      <p className={styles.resultMeta}>{request.mode === 'group' ? `${request.groupName} · ` : ''}{request.activity} · {DateTime.fromISO(request.localDate).toFormat('ccc, LLL d')} · {request.durationMinutes} min<br />
         {request.timezone.replaceAll('_', ' ')} · checked {DateTime.fromISO(request.checkedAt).setZone(request.timezone).toFormat('h:mm a').toLowerCase()}</p>
-      {request.state === 'retry_required' && <p className={styles.status}>A required calendar is unknown, or these options need a fresh check. <Link className={styles.link} href="/setup">Check your connections</Link>.</p>}
-      {request.state === 'no_slots' && <p className={styles.intro}>No shared window fits this request with breathing room. Try a different day or a shorter activity.</p>}
+      {request.state === 'retry_required' && <p className={styles.status}>{request.mode === 'solo' ? 'Your calendar could not be checked, or these options' : 'A required calendar is unknown, or these options'} need a fresh check. <Link className={styles.link} href="/setup">Check your connections</Link>.</p>}
+      {request.state === 'no_slots' && <p className={styles.intro}>{request.mode === 'solo' ? 'Nothing in your calendar fits this request' : 'No shared window fits this request'} with breathing room. Try a different day or a shorter activity.</p>}
       {request.state === 'cancelled' && <p className={styles.status}>This request is cancelled. Its shared links are no longer active.</p>}
       {activeRequest && <div className={styles.results} style={{ marginTop: 20 }}>
         {request.slots.filter(slot => !selected || slot.id === selected.id).map(slot => <button key={slot.id} type="button" disabled={busy} onClick={() => void choose(slot.id)}
           className={`${styles.option} ${slot.id === request.selectedSlotId ? styles.optionSelected : ''}`} aria-pressed={slot.id === request.selectedSlotId}>
           <span className={styles.optionNumber}>{slot.ordinal}</span><span className={styles.optionText}><strong className={styles.optionTime}>{slotTime(slot.start, slot.end, request.timezone)}</strong>
-            <span className={styles.optionAttendance}>{slot.freeIds.length === request.participants.length ? 'Everyone is free' : `${slot.freeIds.length} of ${request.participants.length} known free`}
+            <span className={styles.optionAttendance}>{request.mode === 'solo' ? 'You’re free' : slot.freeIds.length === request.participants.length ? 'Everyone is free' : `${slot.freeIds.length} of ${request.participants.length} known free`}
               {slot.unknownIds.length > 0 ? ` · ${slot.unknownIds.length} unknown` : ''}
               {slot.busyIds.length > 0 ? ` · busy: ${request.participants.filter(member => slot.busyIds.includes(member.id)).map(member => member.displayName).join(', ')}` : ''}</span></span>
           {slot.id === request.selectedSlotId && <span className={styles.selectedMark} aria-label="Selected">✓</span>}

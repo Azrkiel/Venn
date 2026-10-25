@@ -4,7 +4,10 @@ import { getDb } from '@/lib/db';
 import { apiError, HttpError } from '@/lib/http';
 import { consumeRateLimit } from '@/lib/rate-limit';
 import { completePhoneLink, isDirectThread } from '@/features/identity/phone-link';
-import { cancelRequest, getOwnerRequest, selectSlot } from '@/features/requests/service';
+import { CalendarError } from '@/features/calendar/errors';
+import { cancelRequest, createLiveRequest, getOwnerRequest, selectSlot } from '@/features/requests/service';
+import { IntentParseError } from '@/features/scheduling/intent';
+import { WindowError } from '@/features/scheduling/windows';
 import { addSelectedEvent } from '@/features/requests/add';
 import { latestOwnerResult, sendOwnerResult, sendPairedText } from './delivery';
 import { photonConfigured } from './transport';
@@ -73,9 +76,33 @@ async function rawBodyWithinLimit(request: Request): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-function liveLink(requestId?: string) {
-  const path = `/live${requestId ? `?request=${encodeURIComponent(requestId)}` : ''}`;
-  return process.env.APP_BASE_URL ? new URL(path, process.env.APP_BASE_URL).toString() : path;
+const appLink = (path: string) => process.env.APP_BASE_URL ? new URL(path, process.env.APP_BASE_URL).toString() : path;
+const liveLink = (requestId?: string) => appLink(`/live${requestId ? `?request=${encodeURIComponent(requestId)}` : ''}`);
+
+const CLARIFY = `i couldn't tell the day or activity. resend it with a day and what you're doing, like "lunch tomorrow".`;
+
+/** Any non-command text from the paired owner is a solo ask: only the owner's own calendar is checked. */
+async function answerSoloAsk(ownerId: string, text: string): Promise<{ state: string; requestId?: string }> {
+  const reply = async (state: string, message: string) => { await sendPairedText(ownerId, message); return { state }; };
+  try {
+    await consumeRateLimit(`parse:${ownerId}`, 5);
+    const zone = (await getDb().user.findUnique({ where: { id: ownerId }, select: { timezone: true } }))?.timezone;
+    const result = await createLiveRequest(ownerId, { text, timezone: zone ?? 'America/New_York' });
+    if (result.state === 'needs_clarification') return reply('solo_needs_clarification', CLARIFY);
+    if (result.state === 'retry_required') return reply('solo_reconnect', `i couldn't read your calendar. reconnect it here: ${appLink('/setup')}`);
+    if (result.state === 'no_slots') return reply('solo_no_slots', 'nothing fits that day with a little breathing room. try another day or a shorter plan.');
+    if (!('id' in result)) return reply('solo_needs_clarification', CLARIFY);
+    await sendOwnerResult(ownerId, result.id);
+    return { state: 'solo_sent', requestId: result.id };
+  } catch (error) {
+    if (error instanceof CalendarError) return reply('solo_reconnect', `i couldn't read your calendar. reconnect it here: ${appLink('/setup')}`);
+    if (error instanceof WindowError) return reply('solo_needs_clarification', CLARIFY);
+    if (error instanceof IntentParseError && error.code === 'MODEL_BUSY' || error instanceof HttpError && error.code === 'RATE_LIMITED') {
+      return reply('solo_busy', "i'm at my request limit, try again in a minute.");
+    }
+    if (error instanceof IntentParseError) return reply('solo_intent_error', "i couldn't read that one. try sending it again in a minute.");
+    throw error;
+  }
 }
 
 async function processVerifiedMessage(message: VerifiedMessage): Promise<{ state: string; requestId?: string }> {
@@ -97,17 +124,18 @@ async function processVerifiedMessage(message: VerifiedMessage): Promise<{ state
       return { state: 'done', requestId: latest.id };
     } catch (error) {
       if (error instanceof HttpError && error.code === 'NO_ACTIVE_REQUEST') {
-        await sendPairedText(owner.userId, `no current plan yet. choose your group and requester here: ${liveLink()}`);
+        await sendPairedText(owner.userId, `no current plan yet. text me a plan like "free for lunch tomorrow?" or start one here: ${liveLink()}`);
         return { state: 'done' };
       }
       throw error;
     }
   }
   if (/^(?:[123]|no|add)$/i.test(command)) {
+    // Replies apply to the newest plan, the same one "lemme check" and a texted ask just sent.
     const active = await getDb().schedulingRequest.findMany({ where: { ownerId: owner.userId, expiresAt: { gt: new Date() },
-      state: { in: ['ready', 'selected'] } }, orderBy: { createdAt: 'desc' }, select: { id: true }, take: 2 });
-    if (active.length !== 1) {
-      await sendPairedText(owner.userId, `i need you to choose which plan first: ${liveLink()}`);
+      state: { in: ['ready', 'selected'] } }, orderBy: { createdAt: 'desc' }, select: { id: true }, take: 1 });
+    if (active.length === 0) {
+      await sendPairedText(owner.userId, `no current plan yet. text me a plan like "free for lunch tomorrow?" or start one here: ${liveLink()}`);
       return { state: 'needs_request' };
     }
     const result = await getOwnerRequest(owner.userId, active[0].id);
@@ -141,9 +169,8 @@ async function processVerifiedMessage(message: VerifiedMessage): Promise<{ state
     await sendOwnerResult(owner.userId, result.id);
     return { state: 'selected', requestId: result.id };
   }
-  // Forwarded text has no trusted group/requester context. Never infer identity from its contents.
-  await sendPairedText(owner.userId, `let's choose your group and who's asking before i check calendars: ${liveLink()}`);
-  return { state: 'needs_context' };
+  // Forwarded text has no trusted identity for the asker; never infer it. Solo checks only the paired owner.
+  return answerSoloAsk(owner.userId, message.text);
 }
 
 export async function handlePhotonWebhook(request: Request, schedule?: (work: () => Promise<void>) => void): Promise<Response> {

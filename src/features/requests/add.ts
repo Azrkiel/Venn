@@ -43,7 +43,8 @@ export async function addSelectedEvent(ownerId: string, requestId: string, input
     throw new HttpError(409, 'ADD_IN_PROGRESS', 'That Add action is still being checked. Try again shortly.');
   }
   if (claimed.state === 'added') return getOwnerRequest(ownerId, requestId);
-  const requester = saved.participants.find(member => member.participantId === saved.requesterMemberId)?.userId;
+  const solo = !saved.requesterMemberId;
+  const requester = solo ? ownerId : saved.participants.find(member => member.participantId === saved.requesterMemberId)?.userId;
   if (!requester) {
     await getDb().eventAction.update({ where: { requestId }, data: { state: absenceProven ? 'failed' : 'uncertain' } });
     throw new HttpError(409, 'REQUESTER_UNKNOWN', 'The requester needs to be identified before booking.');
@@ -53,7 +54,7 @@ export async function addSelectedEvent(ownerId: string, requestId: string, input
   try {
     const receipt = await performBooking({ ownerId, requestId, eventId, calendarId: claimed.calendarId,
       slotId: slot.id, start: event.start, end: event.end, timezone: event.timezone, summary: event.summary,
-      requiredUserIds: [ownerId, requester], reconcileFirst: Boolean(saved.eventAction) }, {
+      requiredUserIds: solo ? [ownerId] : [ownerId, requester], reconcileFirst: Boolean(saved.eventAction) }, {
       lookup: async () => {
         const found = await lookupOwnerEvent(ownerId, event);
         if (!found) absenceProven = true;

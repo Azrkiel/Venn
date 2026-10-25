@@ -122,8 +122,8 @@ model Invite {
 model SchedulingRequest {
   id                 String @id @default(cuid())
   ownerId            String
-  groupId            String
-  requesterMemberId  String
+  groupId            String?
+  requesterMemberId  String?
   activity           String
   localDate          String
   durationMinutes    Int
@@ -135,7 +135,7 @@ model SchedulingRequest {
   expiresAt          DateTime
   deliveryState      String @default("not_requested")
   owner              User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  group              Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group              Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
   participants       RequestParticipant[]
   slots              Slot[]
   shares             ShareGrant[]

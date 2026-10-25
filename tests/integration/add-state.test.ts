@@ -72,4 +72,10 @@ describe('booking state guards', () => {
     await expect(addSelectedEvent('owner', 'r', { slotId: 's', slotVersion: 1 })).rejects.toMatchObject({ code: 'ADD_IN_PROGRESS' });
     expect(mocks.insert).not.toHaveBeenCalled();
   });
+  it('solo requests (no requester) re-check only the owner and still book', async () => {
+    mocks.load.mockResolvedValue({ ...saved, requesterMemberId: null, participants: [{ participantId: 'self', userId: 'owner' }] });
+    await addSelectedEvent('owner', 'r', { slotId: 's', slotVersion: 1 });
+    expect(mocks.availability.mock.calls.map(call => call[0])).toEqual(['owner']);
+    expect(mocks.insert).toHaveBeenCalledTimes(1);
+  });
 });

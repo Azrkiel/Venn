@@ -6,7 +6,7 @@ import { digestSecret } from '@/features/identity/secrets';
 
 export type PollVote = { slotId: string; voterKey: string; isGuest: boolean; choice: string };
 export type PollSnapshot = {
-  id: string; ownerId: string; requesterMemberId: string;
+  id: string; ownerId: string; requesterMemberId: string | null;
   activity: string; localDate: string; timezone: string; state: string; slotVersion: number; expiresAt: Date;
   participants: { participantId: string; userId: string | null; displayName: string }[];
   slots: { id: string; ordinal: number; start: Date; end: Date; freeIds: string[]; busyIds: string[]; unknownIds: string[] }[];
@@ -58,8 +58,9 @@ export function summarizePoll(request: PollSnapshot) {
   const votes = [...latest.values()];
   const answeredMembers = [...expectedKeys].filter(key => request.slots.length > 0
     && request.slots.every(slot => votes.some(vote => !vote.isGuest && vote.voterKey === key && vote.slotId === slot.id))).length;
+  // Solo requests (no requester) collect guest votes but never auto-complete or pick a winner.
   const expectedMembers = request.participants.length;
-  const complete = expectedMembers > 0 && request.slots.length > 0
+  const complete = request.requesterMemberId !== null && expectedMembers > 0 && request.slots.length > 0
     && request.participants.every(person => person.userId !== null) && answeredMembers === expectedMembers;
   const options = [...request.slots].sort((a, b) => a.ordinal - b.ordinal).map(slot => {
     const matches = votes.filter(vote => vote.slotId === slot.id);

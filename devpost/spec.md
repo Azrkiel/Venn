@@ -71,3 +71,7 @@ Invalid token: reject before provider calls. Ambiguous ask/group/requester: clar
 ## Decisions and Open Issues
 
 Scope/stack/build order were approved with "yea, looks great, continue". Main uncertainty to investigate: whether the real iPhone automation supplies usable group message text/sender identity and whether Photon provisioned routing works. Record actual evidence, not documentation assumptions. Missing secrets/device access do not justify replacing the approved calendar kernel with a claimed live mock.
+
+## Revision (2026-10-24)
+
+The learner decided to build both modes. A request may be solo (`groupId` and `requesterMemberId` null; the organizer is the only participant and the only calendar read) or group (unchanged). Solo is the default in the live UI and the target of any non-command paired iMessage text, which is answered immediately using the organizer's stored timezone. Group overlap is the upgrade path.

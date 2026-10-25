@@ -25,7 +25,7 @@ export async function sendOwnerResult(ownerId: string, requestId: string, transp
   }
   const pair = await getDb().phoneLink.findUnique({ where: { userId: ownerId }, select: { threadId: true } });
   if (!pair || !isDirectThread(pair.threadId)) throw new HttpError(409, 'PHONE_NOT_PAIRED', 'Pair your own phone with Venn before receiving private results.');
-  const options = result.slots.map(slot => `${slot.ordinal}. ${formatSlot(slot.start, slot.end, result.timezone)} · ${slot.freeIds.length} of ${result.participants.length} free${slot.unknownIds.length ? `, ${slot.unknownIds.length} unknown` : ''}`);
+  const options = result.slots.map(slot => `${slot.ordinal}. ${formatSlot(slot.start, slot.end, result.timezone)}${result.mode === 'solo' ? '' : ` · ${slot.freeIds.length} of ${result.participants.length} free${slot.unknownIds.length ? `, ${slot.unknownIds.length} unknown` : ''}`}`);
   const path = `/live?request=${encodeURIComponent(result.id)}`;
   const base = process.env.APP_BASE_URL;
   const privateUrl = base ? new URL(path, base).toString() : path;

@@ -86,6 +86,47 @@ test('reduced motion keeps controls still', async ({ page }) => {
   expect(await animationCount(control)).toBe(0);
   await page.mouse.up();
   expect(await animationCount(control)).toBe(0);
+  await control.click();
+  expect(await animationCount(control)).toBe(0);
+  const privacy = page.getByText('Who sees what', { exact: true });
+  await privacy.click();
+  expect(await animationCount(privacy)).toBe(0);
+});
+
+test('reduced motion keeps the pending save indicator still', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const poll = await makePoll('day');
+  await page.goto(poll.path);
+  let release!: () => void;
+  const held = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/availability', async route => { await held; await route.continue(); });
+  try {
+    await page.getByLabel('Your name', { exact: true }).fill('Rae');
+    const save = page.getByRole('button', { name: 'Save availability', exact: true });
+    await save.click();
+    await expect(save).toHaveAttribute('aria-busy', 'true');
+    expect(await animationCount(save.locator('svg'))).toBe(0);
+  } finally { release(); }
+  await expect(page.getByRole('button', { name: 'Save availability', exact: true })).toContainText('Saved');
+});
+
+test('reduced motion pans mobile calendar days without intermediate scroll positions', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const poll = await makePoll('week');
+  await page.goto(poll.path);
+  const frame = page.getByTestId('week-calendar-scroll');
+  // Capture the first painted position after the real day-arrow action.
+  await page.getByRole('button', { name: 'Scroll days later', exact: true }).evaluate(button => {
+    button.addEventListener('click', () => {
+      requestAnimationFrame(() => {
+        const frame = document.querySelector<HTMLElement>('[data-testid="week-calendar-scroll"]')!;
+        frame.dataset.firstPanPosition = String(frame.scrollLeft);
+      });
+    }, { once: true });
+  });
+  await page.getByRole('button', { name: 'Scroll days later', exact: true }).click();
+  await expect(frame).toHaveAttribute('data-first-pan-position', '100');
 });
 
 test('calendar cells change colour without moving while dragged', async ({ page }) => {

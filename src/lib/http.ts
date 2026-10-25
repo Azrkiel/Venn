@@ -49,9 +49,16 @@ export async function readJson<S extends z.ZodType>(request: Request, schema: S,
 }
 
 export function apiError(error: unknown): Response {
+  const requestId = randomUUID();
+  if (!(error instanceof HttpError)) {
+    const code = typeof error === 'object' && error !== null && 'code' in error
+      && typeof error.code === 'string' && /^P\d{4}$/.test(error.code) ? error.code : 'UNEXPECTED';
+    // Error messages, stacks and metadata can contain calendar, message or credential data.
+    console.error('[venn] request_failed', { requestId, code });
+  }
   const safe = error instanceof HttpError
     ? error : new HttpError(500, 'REQUEST_FAILED', 'Something went wrong. Please try again.');
-  return Response.json({ error: { code: safe.code, message: safe.message }, requestId: randomUUID() },
+  return Response.json({ error: { code: safe.code, message: safe.message }, requestId },
     { status: safe.status, headers: { 'Cache-Control': 'no-store' } });
 }
 

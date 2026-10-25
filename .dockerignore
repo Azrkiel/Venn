@@ -10,3 +10,4 @@ coverage
 *.tsbuildinfo
 devpost/learner-profile.md
 .artifacts
+.claude

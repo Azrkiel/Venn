@@ -37,7 +37,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const buttonStyle = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '11px 18px', borderRadius: 24, border: '1px solid var(--purple-ink)', color: 'var(--purple-ink)', background: 'transparent', fontWeight: 500 } as const;
   return <main className="main-wrap" style={{ maxWidth: 820, paddingTop: 40, paddingBottom: 70 }}>
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <Link href={sharedReturn ?? '/app'} style={buttonStyle}>{sharedReturn ? 'Back to your Venn' : '← Back to Venn'}</Link>
+      <Link href={sharedReturn ?? '/'} style={buttonStyle}>{sharedReturn ? 'Back to your Venn' : '← Back to Venn'}</Link>
       <Link href="/live" style={buttonStyle}>Open live planner →</Link>
     </div>
     <div className="page-intro" style={{ paddingBottom: 25 }}><div>

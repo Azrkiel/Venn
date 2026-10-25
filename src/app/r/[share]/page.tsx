@@ -34,14 +34,14 @@ export default async function SharedPollPage({ params }: { params: Promise<{ sha
   return <main style={{ width: `min(${weekly ? '1100px' : '680px'}, calc(100% - 40px))`, margin: '0 auto', padding: '36px 0 60px' }}>
     <Link href="/" className="brand" aria-label="Venn home"><VennMark /><span>venn</span></Link>
     <p className="eyebrow" style={{ marginTop: weekly ? 26 : 40 }}>LET&apos;S FIND A TIME, TOGETHER</p>
-    <h1 style={{ marginBottom: 16, fontSize: 'clamp(33px, 7vw, 48px)', overflowWrap: 'anywhere' }}>{availability
+    <h1 style={{ marginBottom: 16, fontSize: 'clamp(2.375rem, 7vw, 3.25rem)', overflowWrap: 'anywhere' }}>{availability
       ? <>{availability.activity}{!/[.!?…]$/.test(availability.activity) && <span>.</span>}</> : <>A little time.<br /><span>A good overlap.</span></>}</h1>
     {shared ? shared.kind === 'availability'
       ? <AvailabilityVoting key={share} share={share} initial={shared.poll} signedIn={signedIn} />
       : <PollVoting key={share} share={share} initial={shared.poll} />
       : <section role="alert" style={{ border: '1px solid var(--line)', borderRadius: 16, padding: 24, background: 'var(--surface)' }}>
       <h2 style={{ marginBottom: 12 }}>This plan isn&apos;t available</h2><p style={{ lineHeight: 1.8, color: 'var(--muted)' }}>{error}</p>
-      <Link href="/app" style={{ display: 'inline-block', marginTop: 20, color: 'var(--purple-ink)', textDecoration: 'underline' }}>Back to Venn</Link>
+      <Link href="/" style={{ display: 'inline-block', marginTop: 20, color: 'var(--purple-ink)', textDecoration: 'underline' }}>Back to Venn</Link>
     </section>}
     <details className="page-disclosure">
       <summary>Who sees what</summary>

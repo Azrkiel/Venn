@@ -58,11 +58,11 @@ export default function PollVoting({ share, initial }: { share: string; initial:
   return <section aria-labelledby="options-heading">
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'center', marginBottom: 18 }}>
       <h2 id="options-heading">Which times work for you?</h2>
-      <span style={{ fontSize: 12, color: 'var(--muted)' }}>{poll.answeredMembers} of {poll.expectedMembers} members answered</span>
+      <span style={{ fontSize: '1rem', color: 'var(--muted)' }}>{poll.answeredMembers} of {poll.expectedMembers} members answered</span>
     </div>
     <p style={{ lineHeight: 1.7, color: 'var(--muted)', marginBottom: 20 }}>All times are in {poll.timezone.replaceAll('_', ' ')}. A calendar check and a person&apos;s response are shown separately.</p>
     <label style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 22, maxWidth: 350 }}>
-      <span style={{ fontSize: 12, fontWeight: 600 }}>Guest name <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></span>
+      <span style={{ fontSize: '1rem', fontWeight: 600 }}>Guest name <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span></span>
       <input value={guestName} onChange={event => setGuestName(event.target.value)} maxLength={40}
         autoComplete="given-name" placeholder="What should we call you?" disabled={expired}
         style={{ minHeight: 44, borderRadius: 8, border: '1px solid var(--line)', background: 'var(--surface)', padding: '10px 12px' }} />
@@ -70,10 +70,10 @@ export default function PollVoting({ share, initial }: { share: string; initial:
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {poll.options.map(option => <article key={option.id} style={{ border: '1px solid var(--line)', background: 'var(--surface)', borderRadius: 16, padding: 22 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'baseline', flexWrap: 'wrap', marginBottom: 8 }}>
-          <span style={{ color: 'var(--purple-ink)', fontSize: 12, fontWeight: 600 }}>OPTION {option.ordinal}</span>
-          <h3 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: 23 }}>{formatSlot(Date.parse(option.start), Date.parse(option.end), poll.timezone)}</h3>
+          <span style={{ color: 'var(--purple-ink)', fontSize: '1rem', fontWeight: 600 }}>OPTION {option.ordinal}</span>
+          <h3 style={{ fontFamily: 'var(--serif)', fontWeight: 400, fontSize: '1.75rem' }}>{formatSlot(Date.parse(option.start), Date.parse(option.end), poll.timezone)}</h3>
         </div>
-        <p style={{ color: 'var(--muted)', fontSize: 12, lineHeight: 1.8 }}>
+        <p style={{ color: 'var(--muted)', fontSize: '1rem', lineHeight: 1.8 }}>
           {option.freeCount} of {option.totalCount} calendars show free{option.unknownCount > 0 ? ` · ${option.unknownCount} unknown` : ''}<br />
           Members: {option.memberWorks ?? 0} works · {option.memberCant ?? 0} can&apos;t<br />
           Guests (self-reported): {option.guestWorks ?? 0} works · {option.guestCant ?? 0} can&apos;t
@@ -93,20 +93,20 @@ export default function PollVoting({ share, initial }: { share: string; initial:
     {poll.options.length === 0 && <p>No options are available. Ask the organizer to find another window.</p>}
     <p role="status" aria-live="polite" style={{ minHeight: 22, marginTop: 18, color: 'var(--purple-ink)', lineHeight: 1.7 }}>{message}</p>
     {error && <p role="alert" style={{ color: '#923c3c', marginBottom: 16, lineHeight: 1.7 }}>{error}</p>}
-    <p style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--muted)', fontSize: 12, lineHeight: 1.8, marginTop: 16 }}>
+    <p style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--muted)', fontSize: '1rem', lineHeight: 1.8, marginTop: 16 }}>
       <CircleHelp size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: 3 }} />
       <span>Guests can respond without connecting a calendar. Guest names do not identify a group member. Sign in with your invited Google account to have a response count as an expected member. No event is booked by responding.</span>
     </p>
-    <p style={{ marginTop: 18, fontSize: 12 }}><a href="/setup" style={{ textDecoration: 'underline', color: 'var(--purple-ink)' }}>Sign in to Venn</a>
+    <p style={{ marginTop: 18, fontSize: '1rem' }}><a href="/setup" style={{ textDecoration: 'underline', color: 'var(--purple-ink)' }}>Sign in to Venn</a>
       <span style={{ color: 'var(--muted)' }}> · {poll.guestRespondents} guest {poll.guestRespondents === 1 ? 'browser has' : 'browsers have'} responded</span></p>
     {poll.complete && <p style={{ marginTop: 18, background: 'var(--soft-purple)', borderRadius: 10, padding: 15, lineHeight: 1.7 }}>
       Everyone in the expected group has answered. {poll.winningSlotId ? 'The organizer can review the leading option and choose what to do next.' : 'No option works for both required people. The organizer can try another window.'}
     </p>}
     {poll.options.length > 0 && poll.options.every(option => choices[option.id]) && <aside style={{ marginTop: 24, padding: 24, borderRadius: 16, background: 'var(--soft-purple)' }}>
-      <h3 style={{ fontFamily: 'var(--serif)', fontSize: 24, fontWeight: 400 }}>Love using Venn?</h3>
+      <h3 style={{ fontFamily: 'var(--serif)', fontSize: '1.75rem', fontWeight: 400 }}>Love using Venn?</h3>
       <p style={{ marginTop: 8, color: 'var(--muted)', lineHeight: 1.7 }}>Bring your people together for the next one.</p>
       <Link href="/signup" className="primary-button" style={{ marginTop: 16 }}>Make your own Venn</Link>
     </aside>}
-    <p style={{ marginTop: 22, fontSize: 12, color: 'var(--muted)' }}>Plan date: {DateTime.fromISO(poll.localDate).setLocale('en-US').toFormat('EEEE, MMMM d')}</p>
+    <p style={{ marginTop: 22, fontSize: '1rem', color: 'var(--muted)' }}>Plan date: {DateTime.fromISO(poll.localDate).setLocale('en-US').toFormat('EEEE, MMMM d')}</p>
   </section>;
 }

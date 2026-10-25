@@ -163,7 +163,8 @@ test('signup and creator entry are reachable without requiring a calendar', asyn
   await expect(page.getByRole('button', { name: 'Continue with Google', exact: true })).toBeVisible();
   await expect(page.getByText(/calendar.*(optional|required)|no calendar/i).first()).toBeVisible();
   await page.goto('/venn');
-  await expect(page.getByRole('link', { name: /sign up|sign in|get started/i }).first()).toBeVisible();
+  await expect(page.getByLabel('Activity', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create Venn', exact: true })).toBeVisible();
 });
 
 test('simultaneous first answers in two tabs keep one editable browser identity', async ({ page, context }) => {

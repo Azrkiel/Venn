@@ -27,7 +27,7 @@ export default async function LivePage({ searchParams }: { searchParams: Promise
   const modelReady = Boolean(process.env.GEMINI_API_KEY?.trim() && process.env.GEMINI_MODEL?.trim());
   return <main className={styles.shell}>
     <nav className={styles.nav} aria-label="Venn navigation">
-      <Link className={styles.brand} href="/app"><VennMark size={40} /><span>venn</span></Link>
+      <Link className={styles.brand} href="/"><VennMark size={40} /><span>venn</span></Link>
       <Link className={styles.navLink} href="/venn">Make a Venn</Link>
       <Link className={styles.navLink} href="/setup">Your connections</Link>
     </nav>

@@ -86,7 +86,7 @@ export default function WeeklyCalendar({ cells, buckets, selected, onChange, tim
     const scroll = scrollRef.current;
     if (!scroll) return null;
     const bounds = scroll.getBoundingClientRect();
-    const hit = document.elementFromPoint(Math.max(bounds.left + 65, Math.min(bounds.right - 5, x)),
+    const hit = document.elementFromPoint(Math.max(bounds.left + 79, Math.min(bounds.right - 5, x)),
       Math.max(bounds.top + 66, Math.min(bounds.bottom - 5, y)))?.closest<HTMLButtonElement>('[data-week-date][data-week-row]');
     return hit && canvasRef.current?.contains(hit) && !hit.disabled ? hit : null;
   }
@@ -173,7 +173,8 @@ export default function WeeklyCalendar({ cells, buckets, selected, onChange, tim
   }
 
   function panDays(direction: number) {
-    scrollRef.current?.scrollBy({ left: direction * 100, behavior: 'smooth' });
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    scrollRef.current?.scrollBy({ left: direction * 100, behavior: reduced ? 'instant' : 'smooth' });
   }
 
   const firstDate = dates[0] ? DateTime.fromISO(dates[0], { zone: 'UTC' }) : null;

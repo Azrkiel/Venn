@@ -63,7 +63,7 @@ export function Planner({ initialDate }: { initialDate: string }) {
     <div className="site-shell planner-shell">
       <a className="skip-link" href="#planner">Skip to planning</a>
       <header className="site-header">
-        <Link className="brand" href="/app" aria-label="Venn home"><VennMark /><span>venn</span></Link>
+        <Link className="brand" href="/" aria-label="Venn home"><VennMark /><span>venn</span></Link>
         <nav className="header-nav" aria-label="Main navigation"><a href="#planner" aria-current="page">Sample planner</a><Link href="/live">Live planner</Link><Link href="/venn">Make a Venn</Link></nav>
       </header>
       <main className="main-wrap">

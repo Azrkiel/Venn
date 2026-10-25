@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function findOverlap(page: Page) {
-  await page.goto('/');
+  await page.goto('/app');
   await page.getByRole('button', { name: /Find our overlap/ }).click();
   await expect(page.getByRole('heading', { name: 'Here’s your overlap.' })).toBeVisible();
 }
@@ -9,8 +9,8 @@ async function findOverlap(page: Page) {
 const slotTimes = async (page: Page) => page.locator('.slot-list .slot-time').allTextContents();
 
 test.describe('sample planner', () => {
-  test('/ redirects to /app and shows the sample banner', async ({ page }) => {
-    await page.goto('/');
+  test('/app keeps the optional sample planner available', async ({ page }) => {
+    await page.goto('/app');
     await expect(page).toHaveURL(/\/app$/);
     await expect(page.getByText('Sample calendars')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'What’s the plan?' })).toBeVisible();

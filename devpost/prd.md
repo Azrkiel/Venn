@@ -66,3 +66,7 @@ Automatic messages to friends, silent bookings, a public availability directory,
 ## Open Questions
 
 Device automation and provider provisioning need real evidence; exact event rules need the actual event page. These block claims about live readiness, not the implementation of the approved shared core.
+
+## Revision (2026-10-24)
+
+The learner decided to build both modes. Solo "just me" requests are the default everyday path: Venn checks only the organizer's own calendar, and a text forwarded in the paired iMessage chat is answered immediately with options and a draft reply the organizer sends themselves. Group overlap, with a connected requester, stays as the upgrade.

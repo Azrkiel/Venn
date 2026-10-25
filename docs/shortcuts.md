@@ -19,6 +19,8 @@ In Apple's Shortcuts app, create a shortcut named **Check with Venn**. The expli
    - `requesterMemberId`: that group's identified requester member ID.
    - `text`: the Ask for Input result.
    - `timezone`: your organizer IANA zone.
+
+   For a solo (just me) check, omit `groupId` and `requesterMemberId`: Venn then reads only your own calendar. Send both or neither; one without the other is rejected.
 3. Add **Get Contents of URL** for `https://YOUR_VENN_HOST/api/shortcut`. Method: POST. Request Body: JSON, using those dictionary fields. Add headers `Content-Type: application/json` and `Authorization: Bearer YOUR_OWN_DEVICE_TOKEN`. Replace the dummy host/token locally; no real secret belongs in the repository.
 4. Inspect the returned JSON. HTTP success can contain `state: needs_clarification`; display its clarification reason and ask for another input instead of claiming it found times. A successful normalized result includes the interpreted activity/date/duration, `slots`, `draft`, and an owner request ID. If `state` is `no_slots`, show the honest no-fit result.
 5. Add **Get Dictionary Value** for `draft`, then **Show Result**. Add a menu with “Copy reply,” “View day card,” and “Done.” “Copy reply” uses **Copy to Clipboard** only after the user chooses it.

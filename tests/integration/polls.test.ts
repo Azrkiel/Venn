@@ -86,6 +86,20 @@ const { db } = vi.hoisted(() => ({ db: { shareGrant: { findUnique: vi.fn() }, vo
   completionNotice: { upsert: vi.fn() }, $transaction: vi.fn() } }));
 vi.mock('@/lib/db', () => ({ getDb: () => db }));
 
+describe('solo polls', () => {
+  const soloSnapshot = (): PollSnapshot => ({ ...snapshot(), requesterMemberId: null,
+    participants: [{ participantId: 'self', userId: 'owner', displayName: 'You' }],
+    slots: snapshot().slots.map(slot => ({ ...slot, freeIds: ['self'] })) });
+  it('summarizes without throwing and never completes or picks a winner', () => {
+    const request = soloSnapshot();
+    request.votes = request.slots.map(slot => ({ slotId: slot.id, voterKey: 'member:owner', isGuest: false, choice: 'works' }));
+    request.votes.push({ slotId: 'slot-1', voterKey: 'guest:abc', isGuest: true, choice: 'works' });
+    const dto = publicPoll(request);
+    expect(dto).toMatchObject({ complete: false, winningSlotId: null, guestRespondents: 1 });
+    expect(dto.options[0]).toMatchObject({ freeCount: 1, totalCount: 1, guestWorks: 1 });
+  });
+});
+
 describe('poll persistence boundary', () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -30,7 +30,7 @@ export async function renderOwnerCard(view: OwnerView, busy: Busy[] | null = nul
     </div>
     <div style={{ display: 'flex', fontSize: 28, color: '#79757F', textTransform: 'uppercase', letterSpacing: 2 }}>{day.toFormat('cccc, LLLL d')}</div>
     <div style={{ display: 'flex', fontFamily: 'Fraunces', fontSize: 72, lineHeight: 1.1, marginTop: 18 }}>A little room for {view.activity}.</div>
-    <div style={{ display: 'flex', color: '#79757F', marginTop: 22 }}>{view.groupName} · {view.durationMinutes} min · 15 min to breathe</div>
+    <div style={{ display: 'flex', color: '#79757F', marginTop: 22 }}>{view.mode === 'group' ? `${view.groupName} · ` : ''}{view.durationMinutes} min · 15 min to breathe</div>
     <div style={{ display: 'flex', flexDirection: 'column', marginTop: 46, padding: 28, border: '2px solid #E4E1DB', borderRadius: 22 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 25, marginBottom: 20 }}><span>Your day</span><span>{day.toFormat('ZZZZ')}</span></div>
       <div style={{ display: 'flex', position: 'relative', height: 115, background: '#F1EEE8', borderRadius: 12, overflow: 'hidden' }}>
@@ -48,7 +48,7 @@ export async function renderOwnerCard(view: OwnerView, busy: Busy[] | null = nul
         color: slot.freeIds.length === view.participants.length ? 'white' : '#493268' }}>
         <div style={{ display: 'flex', fontSize: 43 }}>{slot.ordinal} · {DateTime.fromMillis(slot.start, { zone: view.timezone }).toFormat('h:mm')}–{DateTime.fromMillis(slot.end, { zone: view.timezone }).toFormat('h:mm a').toLowerCase()}</div>
         <div style={{ display: 'flex', fontSize: 26, marginTop: 12 }}>{slot.freeIds.length === view.participants.length
-          ? 'everyone is free' : `${slot.freeIds.length} of ${view.participants.length} free${slot.busyIds.length ? ` · not ${slot.busyIds.map(personName).join(', ')}` : ''}${slot.unknownIds.length ? ` · ${slot.unknownIds.length} unknown` : ''}`}</div>
+          ? (view.mode === 'solo' ? 'you’re free' : 'everyone is free') : `${slot.freeIds.length} of ${view.participants.length} free${slot.busyIds.length ? ` · not ${slot.busyIds.map(personName).join(', ')}` : ''}${slot.unknownIds.length ? ` · ${slot.unknownIds.length} unknown` : ''}`}</div>
       </div>)}
     </div>
     <div style={{ display: 'flex', fontSize: 25, color: '#79757F', marginTop: 'auto', paddingTop: 30 }}>Reply 1, 2 or 3, or open Lemme check. You choose what to send.</div>

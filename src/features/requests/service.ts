@@ -8,16 +8,16 @@ import { createSecret, digestSecret } from '@/features/identity/secrets';
 import { prepareRequest } from './prepare';
 import type { Activity } from '@/features/scheduling/types';
 
-export async function createLiveRequest(ownerId: string, input: { groupId: string; requesterMemberId: string; text: string; timezone: string }) {
-  const group = await requestContext(ownerId, input.groupId);
+export async function createLiveRequest(ownerId: string, input: { groupId?: string; requesterMemberId?: string; text: string; timezone: string }) {
+  const group = input.groupId ? await requestContext(ownerId, input.groupId) : null;
   const receivedAt = new Date().toISOString();
-  const result = await prepareRequest({ ...input, ownerId, group, receivedAt }, { parse: parseIntent, availability: getUserAvailability });
+  const result = await prepareRequest({ ownerId, requesterMemberId: input.requesterMemberId, group, text: input.text, timezone: input.timezone, receivedAt }, { parse: parseIntent, availability: getUserAvailability });
   // Unsaved outcomes return only the interpretation; member user IDs stay server-side.
   if (result.state === 'needs_clarification' || !result.intent.localDate) {
     return { state: result.state, intent: result.intent, timezone: result.timezone, checkedAt: result.checkedAt };
   }
   const saved = await getDb().schedulingRequest.create({ data: {
-    ownerId, groupId: group.id, requesterMemberId: input.requesterMemberId, activity: result.intent.activity,
+    ownerId, groupId: group?.id ?? null, requesterMemberId: group ? input.requesterMemberId : null, activity: result.intent.activity,
     localDate: result.intent.localDate, durationMinutes: result.intent.durationMinutes, timezone: input.timezone,
     state: result.state, expiresAt: new Date(Date.now() + 48 * 60 * 60_000),
     participants: { create: result.participants.map(member => ({ participantId: member.id, userId: member.userId, displayName: member.displayName })) },
@@ -40,7 +40,7 @@ export async function getOwnerRequest(ownerId: string, requestId: string) {
   const slots = saved.slots.map(slot => ({ id: slot.id, ordinal: slot.ordinal, start: slot.start.getTime(), end: slot.end.getTime(),
     freeIds: slot.freeIds, busyIds: slot.busyIds, unknownIds: slot.unknownIds }));
   const selected = slots.find(slot => slot.id === saved.selectedSlotId);
-  return { id: saved.id, groupId: saved.groupId, groupName: saved.group.name, activity: saved.activity, localDate: saved.localDate,
+  return { id: saved.id, mode: (saved.groupId ? 'group' : 'solo') as 'solo' | 'group', groupId: saved.groupId, groupName: saved.group?.name ?? null, activity: saved.activity, localDate: saved.localDate,
     durationMinutes: saved.durationMinutes, timezone: saved.timezone, state: saved.state, slotVersion: saved.slotVersion,
     selectedSlotId: saved.selectedSlotId, checkedAt: saved.createdAt.toISOString(), expiresAt: saved.expiresAt.toISOString(),
     participants: saved.participants.map(member => ({ id: member.participantId, displayName: member.displayName })), slots,

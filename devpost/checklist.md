@@ -128,3 +128,5 @@ Activity mode: Pending actual build and learner feedback.
 - External credentials and iPhone access are not yet established. Build code and labelled sample exploration may proceed; no live milestone can be marked complete without its actual evidence.
 
 - The learner explicitly selected Gemini API keys instead of the originally proposed Claude. The intent adapter and environment use @google/genai with stateless structured output.
+
+- 2026-10-24: the learner decided to build both modes. Solo "just me" requests are the default everyday path (organizer calendar only; forwarded iMessage asks are answered immediately), and group overlap is the upgrade. No boxes ticked for this.

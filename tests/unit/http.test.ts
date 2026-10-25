@@ -27,6 +27,12 @@ describe('request boundaries', () => {
     const request = new Request('https://venn.example', { method: 'POST', body: JSON.stringify({ text: 'x'.repeat(9000) }), headers: { 'content-type': 'application/json' } });
     await expect(readJson(request, z.object({ text: z.string() }))).rejects.toMatchObject({ status: 413 });
   });
+  it('permits explicitly larger bounded availability payloads while retaining the default limit', async () => {
+    const make = (size: number) => new Request('https://venn.example', { method: 'PUT',
+      body: JSON.stringify({ text: 'x'.repeat(size) }), headers: { 'content-type': 'application/json' } });
+    await expect(readJson(make(9000), z.object({ text: z.string() }), 65_536)).resolves.toMatchObject({ text: expect.any(String) });
+    await expect(readJson(make(66_000), z.object({ text: z.string() }), 65_536)).rejects.toMatchObject({ status: 413 });
+  });
   it('returns safe generic errors rather than database/provider messages', async () => {
     const response = apiError(new Error('raw secret oauth payload'));
     expect(response.status).toBe(500);

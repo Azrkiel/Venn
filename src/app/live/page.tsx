@@ -28,6 +28,7 @@ export default async function LivePage({ searchParams }: { searchParams: Promise
   return <main className={styles.shell}>
     <nav className={styles.nav} aria-label="Venn navigation">
       <Link className={styles.brand} href="/app"><VennMark size={40} /><span>venn</span></Link>
+      <Link className={styles.navLink} href="/venn">Make a Venn</Link>
       <Link className={styles.navLink} href="/setup">Your connections</Link>
     </nav>
     <p className={styles.eyebrow}>REAL CALENDARS · A LITTLE MORE TOGETHER</p>

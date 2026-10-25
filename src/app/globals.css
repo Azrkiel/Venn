@@ -463,3 +463,11 @@ h2 { font-family: var(--serif); font-size: 26px; font-weight: 400; letter-spacin
   .focused-reply .copy-notice { font-size: 10px; }
   .planner-flow .empty-state { padding: 23px 12px; }
 }
+
+/* Optional detail on shared pages, kept out of the way until asked for. */
+.page-disclosure { border-top: 1px solid var(--line); margin-top: 35px; padding-top: 14px; font-size: 12px; color: var(--muted); }
+.page-disclosure > summary { display: inline-flex; align-items: center; min-height: 40px; color: #6b6372; list-style: none; }
+.page-disclosure > summary::-webkit-details-marker { display: none; }
+.page-disclosure > summary::before { content: ""; width: 6px; height: 6px; margin: 0 9px 0 2px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform 160ms ease; flex-shrink: 0; }
+.page-disclosure[open] > summary::before { transform: rotate(45deg); }
+.page-disclosure > p { line-height: 1.8; margin-top: 4px; max-width: 620px; }

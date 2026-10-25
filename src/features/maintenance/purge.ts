@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db';
 export async function purgeExpired(now = new Date()) {
   const db = getDb();
   const results = await db.$transaction([
+    db.availabilityPoll.deleteMany({ where: { OR: [{ expiresAt: { lte: now } }, { revokedAt: { not: null } }] } }),
     db.schedulingRequest.deleteMany({ where: { expiresAt: { lte: now } } }),
     db.shareGrant.deleteMany({ where: { OR: [{ expiresAt: { lte: now } }, { revokedAt: { not: null } }] } }),
     db.invite.deleteMany({ where: { OR: [{ expiresAt: { lte: now } }, { revokedAt: { not: null } }] } }),

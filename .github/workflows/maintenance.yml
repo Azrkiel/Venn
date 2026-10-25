@@ -1,7 +1,7 @@
-name: Expiry cleanup
+name: Poll deadlines and expiry cleanup
 on:
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 permissions:
   contents: read
@@ -9,7 +9,7 @@ jobs:
   purge:
     runs-on: ubuntu-latest
     steps:
-      - name: Purge expired requests, votes and credentials
+      - name: Deliver due poll results and purge expired records
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           APP_BASE_URL: https://venn-app.fly.dev

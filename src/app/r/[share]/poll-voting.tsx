@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { DateTime } from 'luxon';
 import { Check, CircleHelp, RefreshCw, X } from 'lucide-react';
 import type { PublicPoll } from '@/features/polls/service';
@@ -101,6 +102,11 @@ export default function PollVoting({ share, initial }: { share: string; initial:
     {poll.complete && <p style={{ marginTop: 18, background: 'var(--soft-purple)', borderRadius: 10, padding: 15, lineHeight: 1.7 }}>
       Everyone in the expected group has answered. {poll.winningSlotId ? 'The organizer can review the leading option and choose what to do next.' : 'No option works for both required people. The organizer can try another window.'}
     </p>}
+    {poll.options.length > 0 && poll.options.every(option => choices[option.id]) && <aside style={{ marginTop: 24, padding: 24, borderRadius: 16, background: 'var(--soft-purple)' }}>
+      <h3 style={{ fontFamily: 'var(--serif)', fontSize: 24, fontWeight: 400 }}>Love using Venn?</h3>
+      <p style={{ marginTop: 8, color: 'var(--muted)', lineHeight: 1.7 }}>Bring your people together for the next one.</p>
+      <Link href="/signup" className="primary-button" style={{ marginTop: 16 }}>Make your own Venn</Link>
+    </aside>}
     <p style={{ marginTop: 22, fontSize: 12, color: 'var(--muted)' }}>Plan date: {DateTime.fromISO(poll.localDate).setLocale('en-US').toFormat('EEEE, MMMM d')}</p>
   </section>;
 }

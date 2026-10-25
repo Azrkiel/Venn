@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { getDb } from '@/lib/db';
 import { encryptToken, decryptToken } from './token-vault';
 import { CalendarError } from './errors';
+import { safeSharedReturnPath } from '@/features/identity/return-path';
 
 export const FREEBUSY_SCOPE = 'https://www.googleapis.com/auth/calendar.events.freebusy';
 export const CALENDAR_LIST_SCOPE = 'https://www.googleapis.com/auth/calendar.calendarlist.readonly';
@@ -32,7 +33,7 @@ export function createPkce() {
   return { state, verifier, challenge };
 }
 
-export async function beginCalendarConnection(userId: string, requestId?: string): Promise<string> {
+export async function beginCalendarConnection(userId: string, requestId?: string, returnTo?: string): Promise<string> {
   const config = calendarOAuthConfig();
   if (requestId) {
     const request = await getDb().schedulingRequest.findFirst({ where: { id: requestId, ownerId: userId,
@@ -40,8 +41,11 @@ export async function beginCalendarConnection(userId: string, requestId?: string
     if (!request) throw new CalendarError('INVALID_EVENT_ACTION', 409);
   }
   const pkce = createPkce();
+  const sharedReturn = !requestId ? safeSharedReturnPath(returnTo) : undefined;
+  // Keep share grants inside the existing authenticated encryption envelope, never in plaintext state columns.
+  const verifier = sharedReturn ? JSON.stringify({ verifier: pkce.verifier, returnTo: sharedReturn }) : pkce.verifier;
   await getDb().oAuthState.create({ data: { stateDigest: digest(pkce.state), userId,
-    encryptedVerifier: encryptToken(pkce.verifier, userId), purpose: requestId ? 'write' : 'calendar',
+    encryptedVerifier: encryptToken(verifier, userId), purpose: requestId ? 'write' : 'calendar',
     requestId: requestId ?? null, expiresAt: new Date(Date.now() + 10 * 60_000) } });
   const params = new URLSearchParams({ client_id: config.clientId, redirect_uri: config.redirectUri,
     response_type: 'code', scope: [...baseScopes, ...(requestId ? [OWNED_EVENTS_SCOPE] : [])].join(' '),
@@ -57,7 +61,20 @@ export async function consumeOAuthState(userId: string, state: string) {
   if (!saved || saved.userId !== userId || saved.expiresAt <= new Date()) throw new CalendarError('INVALID_CALENDAR_STATE', 400);
   const consumed = await db.oAuthState.deleteMany({ where: { id: saved.id, userId, expiresAt: { gt: new Date() } } });
   if (consumed.count !== 1) throw new CalendarError('INVALID_CALENDAR_STATE', 400);
-  return { verifier: decryptToken(saved.encryptedVerifier, userId), purpose: saved.purpose, requestId: saved.requestId };
+  const plaintext = decryptToken(saved.encryptedVerifier, userId);
+  let verifier = plaintext;
+  let returnTo: string | undefined;
+  if (plaintext.startsWith('{')) {
+    let envelope: unknown;
+    try { envelope = JSON.parse(plaintext); } catch { throw new CalendarError('INVALID_CALENDAR_STATE', 400); }
+    if (!envelope || typeof envelope !== 'object' || !('verifier' in envelope)
+      || typeof envelope.verifier !== 'string' || !/^[A-Za-z0-9_-]{43,128}$/.test(envelope.verifier)) {
+      throw new CalendarError('INVALID_CALENDAR_STATE', 400);
+    }
+    verifier = envelope.verifier;
+    if (saved.purpose === 'calendar' && 'returnTo' in envelope) returnTo = safeSharedReturnPath(envelope.returnTo);
+  }
+  return { verifier, purpose: saved.purpose, requestId: saved.requestId, ...(returnTo ? { returnTo } : {}) };
 }
 
 function parseTokens(value: unknown): Tokens {
@@ -104,7 +121,7 @@ export async function finishCalendarConnection(userId: string, code: string, sta
     where: { grantId_calendarId: { grantId: grant.id, calendarId: calendar.calendarId } },
     create: { grantId: grant.id, ...calendar, enabled: false }, update: { name: calendar.name, writable: calendar.writable },
   })));
-  return { requestId: saved.requestId, writeGranted: scopes.includes(OWNED_EVENTS_SCOPE) };
+  return { requestId: saved.requestId, writeGranted: scopes.includes(OWNED_EVENTS_SCOPE), ...(saved.returnTo ? { returnTo: saved.returnTo } : {}) };
 }
 
 export async function getAccessToken(userId: string, fetcher: typeof fetch = fetch): Promise<string> {

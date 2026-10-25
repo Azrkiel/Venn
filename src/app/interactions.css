@@ -1,0 +1,15 @@
+/* Shared control feedback. Press/rebound motion comes from InteractionFeedback; this file
+   handles colour, hover and focus so every control answers before the click lands. */
+button, a[href], summary, [role="button"] {
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 160ms ease, opacity 140ms ease;
+}
+button:not(:disabled):hover, a[href]:hover { filter: saturate(1.08); }
+button:not(:disabled):active, a[href]:active, summary:active { filter: brightness(.94); }
+summary { cursor: pointer; user-select: none; }
+
+/* Calendar cells only change colour, instantly, so dragging stays steady under the finger. */
+[data-cell-index], [data-week-date] { transition: none; filter: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  button, a[href], summary, [role="button"] { transition: none; }
+}

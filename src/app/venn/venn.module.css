@@ -1,0 +1,59 @@
+.shell { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 30px 0 50px; }
+.nav { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+.textLink { color: var(--purple-ink); font-size: 12px; line-height: 1.5; text-align: right; }
+.intro { padding: 36px 0 25px; }
+.intro h1 { font-size: clamp(32px, 5.8vw, 44px); line-height: 1.18; letter-spacing: -1.3px; }
+.intro > p:last-child { color: #736b7b; line-height: 1.7; margin-top: 13px; max-width: 530px; font-size: 14px; }
+.card { border: 1px solid var(--line); border-radius: 20px; padding: 30px; background: var(--surface); }
+.cardHeading { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+.cardHeading h2 { margin-top: 5px; overflow-wrap: anywhere; }
+.step { background: var(--soft-purple); color: var(--purple-ink); width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; flex-shrink: 0; }
+.successStep { color: white; background: var(--purple-ink); animation: checkSettle 200ms cubic-bezier(.2,.8,.3,1) both; }
+.form { display: flex; flex-direction: column; gap: 20px; }
+.field { display: flex; min-width: 0; flex-direction: column; gap: 9px; }
+.field > span, .fieldset legend { font-size: 12px; font-weight: 600; color: #62596c; }
+.field input, .field select { width: 100%; min-width: 0; min-height: 46px; border: 1px solid #dcd5e3; border-radius: 9px; background: var(--surface); color: var(--ink); padding: 11px; transition: border-color 140ms ease, box-shadow 140ms ease; }
+.field input:hover, .field select:hover { border-color: #b9a6de; }
+.field input:focus, .field select:focus { border-color: var(--purple-ink); box-shadow: 0 0 0 3px #6043d210; }
+.field input[type=date], .field input[type=datetime-local] { appearance: none; }
+.fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.fieldset legend { margin-bottom: 10px; }
+.scales { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.scale { display: flex; position: relative; flex-direction: column; align-items: flex-start; gap: 6px; border: 1px solid var(--line); border-radius: 10px; padding: 14px 12px; cursor: pointer; transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease; }
+.scale:hover { border-color: #b59cde; background: #f8f4fe; }
+.scale:focus-within { outline: 2px solid var(--purple-ink); outline-offset: 3px; }
+.scale input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.scale strong { font-size: 12px; font-weight: 500; padding-right: 17px; }
+.scale > span { color: #74647f; font-size: 10px; }
+.scale .scaleCheck { position: absolute; right: 9px; top: 11px; display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid #d6cbe5; border-radius: 50%; color: transparent; background: var(--surface); transition: background-color 140ms ease, border-color 140ms ease; }
+.selectedScale, .selectedScale:hover { border-color: var(--purple-ink); background: #ede5ff; box-shadow: inset 0 0 0 1px var(--purple-ink); }
+.selectedScale strong { color: #4d2cb5; }
+.selectedScale .scaleCheck { color: white; background: var(--purple-ink); border-color: var(--purple-ink); animation: checkSettle 180ms cubic-bezier(.2,.8,.3,1) both; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.dateSummary { display: flex; flex-direction: column; gap: 14px; justify-content: center; padding-top: 3px; }
+.dateSummary span { font-size: 12px; color: #7b7187; }
+.dateSummary strong { font-size: 14px; font-weight: 500; }
+.hint { color: #776e80; font-size: 12px; line-height: 1.8; }
+.primary, .secondary { min-height: 46px; border-radius: 25px; display: inline-flex; justify-content: center; align-items: center; gap: 9px; padding: 12px 21px; font-weight: 500; line-height: 1.5; }
+.primary { color: white; background: var(--purple-ink); border: 1px solid var(--purple-ink); align-self: flex-start; }
+.primary { min-width: 190px; }
+.primary:not(:disabled):hover { background: #5236c2; box-shadow: 0 6px 16px -8px #6043d2; }
+.copied, .copied:not(:disabled):hover { background: #2f7d5b; border-color: #2f7d5b; box-shadow: none; }
+.copied svg { animation: checkSettle 260ms cubic-bezier(.2,.8,.3,1.3) both; }
+.secondary { color: var(--purple-ink); background: transparent; border: 1px solid #d8ceea; }
+.secondary:hover { background: var(--soft-purple); border-color: #bfaee0; }
+.copy { color: #736b7b; line-height: 1.8; margin: 15px 0 24px; }
+.notice { color: var(--purple-ink); line-height: 1.7; margin-top: 18px; }
+.notice:empty { display: none; }
+.error { color: #923c3c; background: #fff0ed; border-radius: 8px; padding: 12px; line-height: 1.7; margin-top: 15px; }
+.result { display: flex; flex-direction: column; gap: 20px; animation: resultAppear 200ms ease-out both; }
+.result .copy { margin: 0; }
+.linkIcon { width: 55px; height: 55px; display: grid; place-items: center; background: var(--soft-purple); color: var(--purple-ink); border-radius: 15px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.management { display: flex; align-items: center; justify-content: space-between; gap: 15px; border-top: 1px solid var(--line); padding-top: 15px; font-size: 12px; color: #776e80; }
+.textButton { border: 0; padding: 12px 0; background: none; color: var(--purple-ink); text-decoration: underline; min-height: 44px; align-self: flex-start; font-size: 12px; }
+.footer { margin-top: 24px; font-size: 12px; line-height: 1.8; color: #79717f; }
+@keyframes resultAppear { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes checkSettle { 0% { transform: scale(.82); } 65% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@media (max-width: 520px) { .card { padding: 22px 18px; } .row { grid-template-columns: minmax(0, 1fr); } .scales { grid-template-columns: repeat(2, minmax(0, 1fr)); } .intro { padding-top: 30px; } .management { align-items: flex-start; flex-direction: column; gap: 0; } .primary, .secondary { font-size: 12px; } }
+@media (prefers-reduced-motion: reduce) { .result, .successStep, .selectedScale .scaleCheck, .copied svg { animation: none; } .field input, .field select, .scale, .scale .scaleCheck { transition: none; } }

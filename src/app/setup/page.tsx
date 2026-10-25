@@ -4,6 +4,7 @@ import { getCalendarStatus } from '@/features/calendar/client';
 import { phoneLinkState } from '@/features/identity/phone-link';
 import { photonConfigured } from '@/features/messaging/transport';
 import { PhonePairing } from './phone-pairing';
+import { safeSharedReturnPath, setupReturnPath } from '@/features/identity/return-path';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,13 +29,15 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const phone = userId && photonConfigured() ? await phoneLinkState(userId).catch(() => null) : null;
   const params = await searchParams;
   const proposedReturn = typeof params.returnTo === 'string' ? params.returnTo : '';
-  const returnTo = proposedReturn === '/live' || /^\/join\/[A-Za-z0-9_-]{32,128}$/.test(proposedReturn) ? proposedReturn : '/setup';
+  const sharedReturn = safeSharedReturnPath(proposedReturn);
+  const returnTo = sharedReturn ? setupReturnPath(sharedReturn)
+    : proposedReturn === '/live' || /^\/join\/[A-Za-z0-9_-]{32,128}$/.test(proposedReturn) ? proposedReturn : '/setup';
   const message = typeof params.calendar === 'string' ? messages[params.calendar] : undefined;
   const rowStyle = { display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', borderTop: '1px solid var(--line)' } as const;
   const buttonStyle = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '11px 18px', borderRadius: 24, border: '1px solid var(--purple-ink)', color: 'var(--purple-ink)', background: 'transparent', fontWeight: 500 } as const;
   return <main className="main-wrap" style={{ maxWidth: 820, paddingTop: 40, paddingBottom: 70 }}>
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-      <Link href="/app" style={buttonStyle}>← Back to Venn</Link>
+      <Link href={sharedReturn ?? '/app'} style={buttonStyle}>{sharedReturn ? 'Back to your Venn' : '← Back to Venn'}</Link>
       <Link href="/live" style={buttonStyle}>Open live planner →</Link>
     </div>
     <div className="page-intro" style={{ paddingBottom: 25 }}><div>
@@ -66,11 +69,12 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
         <div><strong>{item.name}</strong><p className="intro-copy" style={{ marginTop: 4 }}>{item.enabled ? 'Included in checks' : 'Not included'}{item.writable ? ' · Your calendar' : ''}</p></div>
         <form action="/api/calendar/selection" method="post">
           <input type="hidden" name="calendarId" value={item.id} /><input type="hidden" name="enabled" value={String(!item.enabled)} />
+          {sharedReturn && <input type="hidden" name="returnTo" value={sharedReturn} />}
           <button style={buttonStyle}>{item.enabled ? 'Exclude' : 'Include'}</button>
         </form>
       </div>)}
       <div style={{ ...rowStyle, marginTop: 20 }}>
-        <form action="/api/calendar/connect" method="post"><button style={buttonStyle} disabled={!userId}>{calendar ? 'Reconnect Google Calendar' : 'Connect Google Calendar'}</button></form>
+        <form action="/api/calendar/connect" method="post">{sharedReturn && <input type="hidden" name="returnTo" value={sharedReturn} />}<button style={buttonStyle} disabled={!userId}>{calendar && calendar.state !== 'disconnected' ? 'Reconnect Google Calendar' : 'Connect Google Calendar'}</button></form>
         {calendar && <form action="/api/calendar/revoke" method="post"><button style={{ ...buttonStyle, borderColor: 'var(--line)', color: 'var(--muted)' }}>Revoke calendar access</button></form>}
       </div>
       <p className="intro-copy">Adding an event later requires a separate permission and your explicit confirmation. Venn will only add to your own calendar and will not invite or message your friends.</p>

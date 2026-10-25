@@ -2,11 +2,15 @@
 
 Let's find a time, together.
 
-Venn helps you answer "are you free?" texts. It checks free/busy time on the Google calendars you and your friends choose to connect, finds a few windows that fit the activity with some breathing room, and hands you a warm reply that you send yourself. It never messages your friends for you and never reads event titles or descriptions.
+Venn turns a group's "when is everyone free?" into a shared plan. Create a Venn, choose its dates and closing deadline, and share one link. Friends mark their availability without an account; everyone sees the overlap. Day, week and two-week plans collect times, while longer plans collect whole dates.
+
+The separate calendar planner at `/live` helps answer "are you free?" texts using selected Google calendars, Gemini interpretation and a reply you choose to send. Solo requests check your calendar; connected groups compare consenting members. Venn never messages your friends for you or reads event titles or descriptions.
 
 ## Status
 
-The app code for the core flow is written and passes its mechanical checks: typecheck, lint, unit and integration tests (mocked providers), production build, a Playwright browser suite, and the Prisma migration against a real Postgres. It has **not** been verified against live Google, Gemini or Photon accounts yet, and the iPhone path has not been tested on a device. See [the build checklist](devpost/checklist.md) for what each slice still needs.
+The availability and calendar-planner flows are implemented. Historical pilot checks on October 24–25, 2026 recorded Google sign-in, a live Gemini request, phone pairing and solo iMessage replies. Those checks do not establish that every integration works today or that the full group flow has passed on real phones.
+
+The remaining live acceptance checks cover two phones answering the same Venn, real Google busy overlays and new-account consent, Messages link previews and organizer close summaries, explicit calendar writes, and the iPhone Shortcut. See the [phone acceptance record](docs/phone-spike.md) and [build checklist](devpost/checklist.md). Run the checks below against the exact revision being released; historical test counts are not a current release result.
 
 Without credentials the app runs a clearly labelled sample planner at `/app` that uses the real ranking code on invented calendars.
 
@@ -14,6 +18,8 @@ Without credentials the app runs a clearly labelled sample planner at `/app` tha
 
 | Area | Where |
 | --- | --- |
+| Group creation and signup draft | `src/app/venn/`, `src/app/signup/` |
+| Availability responses, overlap and close summaries | `src/features/availability/`, `src/app/r/[share]/` |
 | Overlap ranking (pure, deterministic) | `src/features/scheduling/rank.ts`, `windows.ts` |
 | Ask interpretation (Gemini structured output) | `src/features/scheduling/intent.ts` |
 | Google sign-in and Calendar OAuth, encrypted grants | `src/auth.ts`, `src/features/calendar/` |
@@ -56,7 +62,9 @@ Connecting Google, Gemini and Photon is covered step by step in [docs/setup.md](
 | `npm run db:check` | the configured Postgres is reachable |
 | `npm run smoke:calendar` / `smoke:gemini` / `smoke:photon` | one live, read-only (or single deliberate DM) check against each real provider |
 
-Mocks, sample calendars and a passing build are not live evidence. The smoke scripts are.
+Mocks, sample calendars and a passing build are not live evidence. The provider smoke scripts exercise real integrations; phone delivery still needs receipt confirmed on the actual device. `smoke:photon` sends one deliberate message to the paired organizer.
+
+For a reproducible walkthrough, use the [demo guide](docs/demo.md). The offline [app map](devpost/app-map.html) connects a saved response to its UI, API, database and overlap calculation.
 
 ## Planning documents
 

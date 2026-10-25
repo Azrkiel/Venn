@@ -116,11 +116,11 @@ Build mode: fast — explicitly selected by the learner ("first one"); concise u
 - [ ] Optional edit and transfer reflection addressed
 - [ ] `devpost/app-map.html` generated, checked and shown
 
-Activity and evidence: Not performed yet.
-Route and stops: Recorded after implementation.
-Edit outcome: Not offered yet.
-Reflection: Not offered yet.
-Activity mode: Pending actual build and learner feedback.
+Activity and evidence: A static reference map is prepared at `devpost/app-map.html`; the guided learner activity and final hands-on feedback remain pending.
+Route and stops: Reference route follows `AvailabilityVoting.save` → availability `PUT` route → `saveAvailability` / `view` / `aggregateAvailability`. This route has not been toured with the learner.
+Edit outcome: No learner edit offered or recorded in this documentation pass.
+Reflection: Not offered in this documentation pass.
+Activity mode: Static reference prepared; no hands-on learning completion inferred.
 
 ## Revisions
 
@@ -143,3 +143,4 @@ Activity mode: Pending actual build and learner feedback.
 - 2026-10-24 revised trial build verified: dedicated Outlook-style weekly/two-week calendar, full final-month selection, optional viewer-private Google busy reference, safe signup/consent return and unsaved draft restoration. 212 tests and 50 desktop/mobile browser journeys passed; typecheck, lint and production build passed. `docs/plans/2026-10-24-week-calendar.md` records evidence and live calendar checks still outstanding. No production deploy or original learner milestone sign-off inferred.
 - 2026-10-24 UX feedback: keep explanations light, remove repeated guidance, and make interactions feel deliberate with clear pressed/selected/pending/success feedback and a little motion. Keep dragging steady and respect reduced-motion preferences. Work recorded in `docs/plans/2026-10-24-ui-polish.md`.
 - 2026-10-25: UI polish finished and verified locally (`docs/plans/2026-10-24-ui-polish.md`): lighter copy, press/rebound feedback with reduced-motion support, confirmed save and copy states. 212 tests, 58 guest browser journeys and the creator suite passed; typecheck, lint and build passed. No deploy and no learner milestone sign-off inferred.
+- 2026-10-25 readiness documentation: README now distinguishes the group-availability home flow from the separate calendar planner and historical provider use from current release evidence. `docs/demo.md` supplies a reproducible technical walkthrough; `docs/phone-spike.md` records outstanding physical-device checks; `docs/shortcuts.md` matches the implemented solo-DM and newest-request command behavior. `devpost/app-map.html` provides a code-grounded reference route. No original learner, submission, phone or calendar-write milestone is marked complete by these documents.

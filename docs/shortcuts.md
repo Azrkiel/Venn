@@ -5,8 +5,8 @@ These are manual setup recipes for the implemented HTTPS APIs. A Shortcut/iCloud
 ## Prerequisites
 
 1. Run the live Venn app on HTTPS. Complete Google sign-in, Calendar connection and selected-calendar setup. Gemini must be configured on the server. The labelled sample screen does not connect real calendars.
-2. Create a group, invite the consenting friends and identify which member is asking. In the private app, choose that group and requester. Use their exact `groupId` and `requesterMemberId` from the app's setup/API output, not a name guessed from a text. Use the organizer's IANA time zone, for example `America/New_York`.
-3. On Venn's device setup page, issue a named Shortcut credential through `POST /api/device-tokens`. It is shown once and expires after 30 days. Keep it in your own Shortcut; anyone with that token can create requests and read your latest result. Never share a Shortcut containing your credential or put it in a URL. Other people should issue their own credentials.
+2. Start with a solo check, which needs only the organizer's connected calendar and IANA time zone, for example `America/New_York`. For a connected-group check, create a group, invite consenting friends and identify the requester in `/live`. Use the exact `groupId` and `requesterMemberId` returned by the authenticated groups API, not a name guessed from a text.
+3. In your signed-in browser, issue a named Shortcut credential through `POST /api/device-tokens` with JSON `{ "label": "My iPhone Shortcut" }`. This is an authenticated, same-origin API; the setup page currently provides phone pairing, not a Shortcut-token form. The response shows the credential once and it expires after 30 days. Keep it in your own Shortcut; anyone with that token can create requests and read your latest result. Never share a Shortcut containing your credential or put it in a URL. Other people should issue their own credentials.
 4. `GET /api/device-tokens` lists credential metadata without showing plaintext tokens. `DELETE /api/device-tokens` with JSON `{ "id": "the-device-id" }` revokes a device immediately. These administration endpoints use the signed-in browser session and same-origin protection; the device token cannot administer devices or groups.
 
 ## Shortcut 1: Check with Venn
@@ -58,9 +58,9 @@ Photon cloud configuration requires `IMESSAGE_PROJECT_ID`, `IMESSAGE_PROJECT_SEC
 3. The challenge expires in 10 minutes. Venn verifies Photon's signature before binding the observed sender and sending-line-aware thread to your account. A typed phone number in a web form never establishes this link. A consumed code cannot be used twice.
 4. `GET /api/phone-link` reports whether pairing exists. `DELETE /api/phone-link` unlinks your account and invalidates outstanding pairing challenges.
 
-After pairing, “lemme check” sends your latest current result to this private DM. `1`, `2` or `3` selects an existing option only when exactly one active request exists; Venn asks you to choose a request if there are several. `no` cancels that single request. `add` requires a previously selected current option and explicit Calendar write permission; otherwise it sends you to the private confirmation page. It never adds events for friends or sends their reply.
+After pairing, “lemme check” sends your latest current result to this private DM. `1`, `2` or `3` selects an option on your newest unexpired ready/selected request; `no` cancels that newest request. To act on an older request, open its private page instead. `add` requires a previously selected current option and explicit Calendar write permission; otherwise it sends you to the private confirmation page. It never adds events for friends or sends their reply.
 
-Forwarded scheduling text has no trustworthy Venn group/requester identifiers. Venn sends the paired organizer a private link to choose that context; it does not guess from the forwarded text. Unpaired ordinary messages receive no private calendar data. Group-chat deliveries and outbound echoes are ignored.
+Any non-command scheduling text in the paired organizer's DM, including a forwarded ask, starts a **solo** check of that organizer's selected calendars. Venn does not infer group or requester identity from forwarded text. Use `/live` to select a connected group explicitly. Unpaired ordinary messages receive no private calendar data. Group-chat deliveries and outbound echoes are ignored.
 
 ## Retention and webhook audit
 
@@ -86,4 +86,4 @@ The tests submit a synthetic private-text canary and inspect the mocked database
 - [ ] Test iOS Message trigger with invented text: selected sender, keyword, locked/unlocked, Run Immediately setting, sender variable and group-message variable availability. Record iOS version and results before enabling automation.
 - [ ] If automation fails any required case, use the explicit manual Shortcut rather than describing automatic detection as complete.
 
-No actual-device boxes were completed during code-only implementation.
+No boxes here are marked complete by code-only implementation. Historical pilot evidence and the remaining device trial are tracked in [phone-spike.md](phone-spike.md).

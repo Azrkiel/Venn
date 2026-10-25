@@ -13,4 +13,5 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
           APP_BASE_URL: https://venn-app.fly.dev
-        run: curl -fsS --retry 2 -H "Authorization: Bearer $CRON_SECRET" "$APP_BASE_URL/api/internal/maintenance"
+        run: |
+          curl -fsS --retry 2 -H "Authorization: Bearer $CRON_SECRET" "$APP_BASE_URL/api/internal/maintenance"

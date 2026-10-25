@@ -1,0 +1,16 @@
+name: Expiry cleanup
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Purge expired requests, votes and credentials
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_BASE_URL: https://venn-app.fly.dev
+        run: curl -fsS --retry 2 -H "Authorization: Bearer $CRON_SECRET" "$APP_BASE_URL/api/internal/maintenance"

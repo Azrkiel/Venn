@@ -2,8 +2,9 @@ import { getDb } from '@/lib/db';
 import { HttpError } from '@/lib/http';
 import { createSecret, digestSecret } from './secrets';
 
+/** Mirrors the adapter's DM rule (`;-;` chat GUIDs); Photon's shared pool uses `any;-;<handle>`. Group GUIDs use `;+;`. */
 export function isDirectThread(threadId: string): boolean {
-  return /^imessage:(?:iMessage|SMS|RCS);-;[^~\r\n]+(?:~[^~\r\n]+)?$/.test(threadId);
+  return /^imessage:[A-Za-z]+;-;[^~;\r\n]+(?:~[^~\r\n]+)?$/.test(threadId);
 }
 
 export async function beginPhoneLink(ownerId: string) {

@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { currentUserId, loginConfigured, signIn, signOut } from '@/auth';
 import { getCalendarStatus } from '@/features/calendar/client';
+import { phoneLinkState } from '@/features/identity/phone-link';
+import { photonConfigured } from '@/features/messaging/transport';
+import { PhonePairing } from './phone-pairing';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +25,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   if (userId) {
     try { calendar = await getCalendarStatus(userId); } catch { unavailable = true; }
   }
+  const phone = userId && photonConfigured() ? await phoneLinkState(userId).catch(() => null) : null;
   const params = await searchParams;
   const proposedReturn = typeof params.returnTo === 'string' ? params.returnTo : '';
   const returnTo = proposedReturn === '/live' || /^\/join\/[A-Za-z0-9_-]{32,128}$/.test(proposedReturn) ? proposedReturn : '/setup';
@@ -71,6 +75,11 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
       </div>
       <p className="intro-copy">Adding an event later requires a separate permission and your explicit confirmation. Venn will only add to your own calendar and will not invite or message your friends.</p>
     </section>
+    {phone && <section className="plan-card" style={{ marginTop: 20 }}>
+      <p className="section-kicker">03 · YOUR IPHONE</p><h2 style={{ marginTop: 8 }}>Pair your phone</h2>
+      <p className="intro-copy">Pairing links your own Messages thread to Venn so results and replies like &ldquo;lemme check&rdquo; reach only you. Venn never messages your friends.</p>
+      <PhonePairing initiallyPaired={phone.paired} />
+    </section>}
     <p className="intro-copy" style={{ marginTop: 22 }}>Live request interpretation: {process.env.GEMINI_API_KEY?.trim() && process.env.GEMINI_MODEL?.trim()
       ? 'Gemini is configured on the server.' : 'Gemini needs GEMINI_API_KEY and GEMINI_MODEL in your server environment.'} Calendar and message content is never shown here.</p>
   </main>;

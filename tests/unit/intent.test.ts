@@ -1,13 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parseIntent, parseSampleIntent } from '@/features/scheduling/intent';
 
-const { createInteraction } = vi.hoisted(() => ({ createInteraction: vi.fn() }));
+const { generateContent } = vi.hoisted(() => ({ generateContent: vi.fn() }));
 vi.mock('@google/genai', () => ({
   GoogleGenAI: class {
-    interactions = { create: createInteraction };
+    models = { generateContent };
   },
+  ThinkingLevel: { LOW: 'LOW' },
 }));
-afterEach(() => { vi.unstubAllEnvs(); createInteraction.mockReset(); });
+afterEach(() => { vi.unstubAllEnvs(); generateContent.mockReset(); });
+const reply = (text: string | undefined, finishReason = 'STOP') => ({ text, candidates: [{ finishReason }] });
 
 const receivedAt = '2026-10-24T16:00:00Z';
 const zone = 'America/New_York';
@@ -45,6 +47,10 @@ describe('parseIntent', () => {
     await expect(parseIntent('private original ask', receivedAt, zone, async () => { throw new Error('private original ask; secret token'); }))
       .rejects.toMatchObject({ code: 'MODEL_UNAVAILABLE', message: 'Venn could not interpret that request. Please try again.' });
   });
+  it('reports a provider rate limit as busy without leaking provider text', async () => {
+    await expect(parseIntent('private original ask', receivedAt, zone, async () => { throw Object.assign(new Error('quota; private original ask'), { status: 429 }); }))
+      .rejects.toMatchObject({ code: 'MODEL_BUSY', message: 'Venn is at its request limit right now. Try again in a minute.' });
+  });
   it('refuses invalid receipt timestamps, timezones and empty/long asks before calling the provider', async () => {
     const extract = vi.fn(async () => lunch);
     await expect(parseIntent('lunch', 'not-a-date', zone, extract)).rejects.toMatchObject({ code: 'INVALID_INPUT' });
@@ -60,25 +66,25 @@ describe('parseIntent', () => {
   });
   it('sends a stateless schema-constrained Gemini request without tools or history', async () => {
     vi.stubEnv('GEMINI_API_KEY', 'test-not-a-real-key'); vi.stubEnv('GEMINI_MODEL', 'test-model');
-    createInteraction.mockResolvedValue({ status: 'completed', output_text: JSON.stringify(lunch) });
+    generateContent.mockResolvedValue(reply(JSON.stringify(lunch)));
     expect(await parseIntent('lunch tomorrow?', receivedAt, zone)).toEqual(lunch);
-    const [request, options] = createInteraction.mock.calls[0];
-    expect(request).toMatchObject({ model: 'test-model', store: false,
-      response_format: { type: 'text', mime_type: 'application/json', schema: { type: 'object', additionalProperties: false } } });
-    expect(JSON.parse(request.input)).toEqual({ text: 'lunch tomorrow?', receivedAt, zone });
-    expect(request.tools).toBeUndefined(); expect(request.previous_interaction_id).toBeUndefined();
-    expect(options).toMatchObject({ timeout_ms: 15_000, maxRetries: 0 });
+    const [request] = generateContent.mock.calls[0];
+    expect(request).toMatchObject({ model: 'test-model', config: { responseMimeType: 'application/json',
+      responseJsonSchema: { type: 'object', additionalProperties: false },
+      httpOptions: { timeout: 15_000, retryOptions: { attempts: 1 } } } });
+    expect(JSON.parse(request.contents)).toEqual({ text: 'lunch tomorrow?', receivedAt, zone });
+    expect(request.config.tools).toBeUndefined(); expect(request.config.cachedContent).toBeUndefined();
   });
-  it.each(['failed', 'incomplete', 'requires_action'])('safely rejects Gemini %s responses', async status => {
+  it.each(['MAX_TOKENS', 'SAFETY', 'RECITATION'])('safely rejects Gemini %s responses', async finishReason => {
     vi.stubEnv('GEMINI_API_KEY', 'test-not-a-real-key'); vi.stubEnv('GEMINI_MODEL', 'test-model');
-    createInteraction.mockResolvedValue({ status, output_text: JSON.stringify(lunch) });
+    generateContent.mockResolvedValue(reply(JSON.stringify(lunch), finishReason));
     await expect(parseIntent('lunch tomorrow?', receivedAt, zone)).rejects.toMatchObject({ code: 'MODEL_UNAVAILABLE' });
   });
   it('does not convert a Gemini refusal or malformed JSON into a successful intent', async () => {
     vi.stubEnv('GEMINI_API_KEY', 'test-not-a-real-key'); vi.stubEnv('GEMINI_MODEL', 'test-model');
-    createInteraction.mockResolvedValueOnce({ status: 'completed', output_text: '' });
+    generateContent.mockResolvedValueOnce(reply(''));
     await expect(parseIntent('lunch tomorrow?', receivedAt, zone)).rejects.toMatchObject({ code: 'MODEL_UNAVAILABLE' });
-    createInteraction.mockResolvedValueOnce({ status: 'completed', output_text: 'private malformed response' });
+    generateContent.mockResolvedValueOnce(reply('private malformed response'));
     await expect(parseIntent('lunch tomorrow?', receivedAt, zone)).rejects.toMatchObject({ code: 'INVALID_MODEL_OUTPUT' });
   });
 });

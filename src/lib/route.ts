@@ -17,7 +17,7 @@ export async function userRoute(request: Request, action: (userId: string) => Pr
     return await action(await requireUser());
   } catch (error) {
     if (error instanceof CalendarError) return apiError(new HttpError(error.status, error.code, 'Check your Calendar connection and selected calendars, then try again.'));
-    if (error instanceof IntentParseError) return apiError(new HttpError(error.code === 'MODEL_NOT_CONFIGURED' ? 503 : 422, error.code, error.message));
+    if (error instanceof IntentParseError) return apiError(new HttpError(error.code === 'MODEL_NOT_CONFIGURED' ? 503 : error.code === 'MODEL_BUSY' ? 429 : 422, error.code, error.message));
     if (error instanceof WindowError) return apiError(new HttpError(422, error.code, error.message));
     return apiError(error);
   }

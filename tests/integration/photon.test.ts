@@ -57,6 +57,15 @@ describe('Photon authenticity and retention', () => {
       .not.toContain('private-canary-text');
     expect(ownerRequest).not.toHaveBeenCalled();
   });
+  it("processes Photon's shared-pool DM shape (any;-;<handle>) instead of ignoring it", async () => {
+    const shared = JSON.stringify({ event: 'messages', space: { id: 'any;-;+15551234567', platform: 'iMessage' },
+      message: { id: 'spc-msg-1', platform: 'iMessage', direction: 'inbound', timestamp: new Date().toISOString(),
+        sender: { id: '+15551234567', platform: 'iMessage' }, space: { id: 'any;-;+15551234567', platform: 'iMessage' },
+        content: { type: 'text', text: 'hi' } } });
+    expect((await handlePhotonWebhook(signedRequest(shared))).status).toBe(200);
+    expect(db.processedDelivery.create).toHaveBeenCalledWith({ data: expect.objectContaining({ messageId: 'spc-msg-1' }) });
+    expect(db.phoneLink.findUnique).toHaveBeenCalled();
+  });
   it('ignores group and outbound messages even when signed', async () => {
     const group = JSON.parse(payload()); group.space.id = 'iMessage;+;group';
     expect((await handlePhotonWebhook(signedRequest(JSON.stringify(group)))).status).toBe(204);

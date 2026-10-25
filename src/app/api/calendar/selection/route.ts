@@ -1,6 +1,7 @@
 import { selectCalendar } from '@/features/calendar/client';
 import { CalendarError } from '@/features/calendar/errors';
-import { calendarActor, calendarRouteError, readCalendarForm, setupRedirect } from '@/features/calendar/http';
+import { calendarActor, calendarRouteError, readCalendarForm } from '@/features/calendar/http';
+import { setupReturnPath } from '@/features/identity/return-path';
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +11,6 @@ export async function POST(request: Request) {
     const enabled = form.get('enabled');
     if (!calendarId || calendarId.length > 1024 || !['true', 'false'].includes(enabled ?? '')) throw new CalendarError('INVALID_CALENDAR_SELECTION', 422);
     await selectCalendar(userId, calendarId, enabled === 'true');
-    return setupRedirect(request, 'updated');
+    return Response.redirect(new URL(setupReturnPath(form.get('returnTo'), 'updated'), process.env.APP_BASE_URL?.trim() || request.url), 303);
   } catch (error) { return calendarRouteError(error); }
 }

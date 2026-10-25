@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
 const CI = !!process.env.CI;
+const authenticated = process.env.VENN_AUTH_E2E === '1';
 const baseURL = 'http://127.0.0.1:3000';
 // `npm run verify` already builds in CI; only rebuild if no production build exists.
 const ciCommand = existsSync('.next/BUILD_ID') ? 'npm run start' : 'npm run build && npm run start';
@@ -36,6 +37,15 @@ export default defineConfig({
     timeout: CI ? 300_000 : 120_000,
     stdout: 'pipe',
     stderr: 'pipe',
-    env: { ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}) },
+    env: {
+      ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}),
+      APP_BASE_URL: baseURL, AUTH_URL: baseURL,
+      // Node passes explicit empty values on Windows; PowerShell `$env:NAME=''` removes the variable.
+      // Never let Next reload real OAuth/Photon credentials from .env.local during browser tests.
+      AUTH_GOOGLE_ID: authenticated ? 'venn-e2e-google-client' : '',
+      AUTH_GOOGLE_SECRET: authenticated ? 'venn-e2e-google-secret' : '',
+      AUTH_SECRET: 'venn-playwright-local-only-session-secret',
+      IMESSAGE_PROJECT_ID: '', IMESSAGE_PROJECT_SECRET: '', IMESSAGE_WEBHOOK_SECRET: '',
+    },
   },
 });

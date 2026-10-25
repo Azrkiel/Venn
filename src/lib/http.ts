@@ -19,12 +19,12 @@ export function requireSameOrigin(request: Request): void {
   }
 }
 
-export async function readJson<S extends z.ZodType>(request: Request, schema: S): Promise<z.output<S>> {
+export async function readJson<S extends z.ZodType>(request: Request, schema: S, maxBytes = 8192): Promise<z.output<S>> {
   if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
     throw new HttpError(415, 'JSON_REQUIRED', 'Send this request as JSON.');
   }
   const declared = Number(request.headers.get('content-length'));
-  if (declared > 8192) throw new HttpError(413, 'BODY_TOO_LARGE', 'Please use a shorter scheduling ask.');
+  if (declared > maxBytes) throw new HttpError(413, 'BODY_TOO_LARGE', 'Please use a shorter scheduling ask.');
   const reader = request.body?.getReader();
   let size = 0;
   const chunks: Uint8Array[] = [];
@@ -33,7 +33,7 @@ export async function readJson<S extends z.ZodType>(request: Request, schema: S)
       const next = await reader.read();
       if (next.done) break;
       size += next.value.byteLength;
-      if (size > 8192) {
+      if (size > maxBytes) {
         await reader.cancel();
         throw new HttpError(413, 'BODY_TOO_LARGE', 'Please use a shorter scheduling ask.');
       }

@@ -64,7 +64,7 @@ export function Planner({ initialDate }: { initialDate: string }) {
       <a className="skip-link" href="#planner">Skip to planning</a>
       <header className="site-header">
         <Link className="brand" href="/app" aria-label="Venn home"><VennMark /><span>venn</span></Link>
-        <nav className="header-nav" aria-label="Main navigation"><a href="#planner" aria-current="page">Sample planner</a><Link href="/live">Live planner</Link></nav>
+        <nav className="header-nav" aria-label="Main navigation"><a href="#planner" aria-current="page">Sample planner</a><Link href="/live">Live planner</Link><Link href="/venn">Make a Venn</Link></nav>
       </header>
       <main className="main-wrap">
         <div className="sample-banner"><div><FlaskConical size={14} /><span><strong>Sample calendars</strong><span className="sample-banner-detail"> · No real accounts connected.</span></span></div><Link href="/setup">Connect yours <ArrowRight size={13} /></Link></div>

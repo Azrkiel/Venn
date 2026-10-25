@@ -1,7 +1,12 @@
 import { currentUserId } from '@/auth';
 import { consumeOAuthState, finishCalendarConnection } from '@/features/calendar/oauth';
 import { CalendarError } from '@/features/calendar/errors';
-import { calendarRouteError, setupRedirect } from '@/features/calendar/http';
+import { calendarRouteError } from '@/features/calendar/http';
+import { setupReturnPath } from '@/features/identity/return-path';
+
+function returnToCalendarSetup(request: Request, status: string, returnTo?: string) {
+  return Response.redirect(new URL(setupReturnPath(returnTo, status), process.env.APP_BASE_URL?.trim() || request.url), 303);
+}
 
 function returnToSelectedRequest(request: Request, requestId: string, state: 'write-granted' | 'write-declined') {
   const destination = new URL('/live', process.env.APP_BASE_URL?.trim() || request.url);
@@ -19,10 +24,10 @@ export async function GET(request: Request) {
     if (params.has('error')) {
       const saved = await consumeOAuthState(userId, state);
       if (saved.purpose === 'write' && saved.requestId) return returnToSelectedRequest(request, saved.requestId, 'write-declined');
-      return setupRedirect(request, 'declined');
+      return returnToCalendarSetup(request, 'declined', saved.returnTo);
     }
     const result = await finishCalendarConnection(userId, params.get('code') ?? '', state);
     if (result.requestId) return returnToSelectedRequest(request, result.requestId, result.writeGranted ? 'write-granted' : 'write-declined');
-    return setupRedirect(request, 'connected');
+    return returnToCalendarSetup(request, 'connected', result.returnTo);
   } catch (error) { return calendarRouteError(error); }
 }

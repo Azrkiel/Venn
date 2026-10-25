@@ -70,3 +70,14 @@ for (const key of ['expired', 'revoked', 'unknown'] as const) {
     await expect(page.locator('article')).toHaveCount(0);
   });
 }
+
+test('finishing an option poll invites a guest to make their own Venn', async ({ page }) => {
+  await page.goto(pollUrl(seed.tokens.valid));
+  await expect(page.getByRole('link', { name: 'Make your own Venn', exact: true })).toHaveCount(0);
+  for (let n = 1; n <= seed.optionCount; n++) {
+    await option(page, n).getByRole('button', { name: 'works', exact: true }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Saved.' })).toBeVisible();
+  }
+  await expect(page.getByText('Love using Venn?', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Make your own Venn', exact: true })).toHaveAttribute('href', '/signup');
+});

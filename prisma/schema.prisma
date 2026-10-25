@@ -23,6 +23,7 @@ model User {
   phoneLink     PhoneLink?
   oauthStates   OAuthState[]
   pairings      PairingChallenge[]
+  availabilityPolls AvailabilityPoll[]
 }
 
 model Account {
@@ -267,4 +268,38 @@ model RateLimitBucket {
   key       String @id
   count     Int
   expiresAt DateTime
+}
+
+model AvailabilityPoll {
+  id          String @id @default(cuid())
+  ownerId     String
+  activity    String
+  timezone    String
+  scale       String
+  startDate   String
+  endDate     String
+  closesAt    DateTime
+  closedAt    DateTime?
+  expiresAt   DateTime
+  tokenDigest String @unique
+  revokedAt   DateTime?
+  noticeState String @default("pending")
+  revision    Int @default(0)
+  createdAt   DateTime @default(now())
+  owner       User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  responses   AvailabilityResponse[]
+  @@index([ownerId, createdAt])
+  @@index([noticeState, closesAt])
+  @@index([expiresAt])
+}
+
+model AvailabilityResponse {
+  id        String @id @default(cuid())
+  pollId    String
+  voterKey  String
+  name      String
+  ranges    Json
+  updatedAt DateTime @updatedAt
+  poll      AvailabilityPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  @@unique([pollId, voterKey])
 }

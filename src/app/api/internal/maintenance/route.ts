@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { purgeExpired } from '@/features/maintenance/purge';
+import { processAvailabilityNotices } from '@/features/availability/notices';
 import { apiError, HttpError, privateJson } from '@/lib/http';
 
 export const GET = async (request: Request) => {
@@ -8,6 +9,7 @@ export const GET = async (request: Request) => {
     if (!secret) throw new HttpError(503, 'MAINTENANCE_NOT_CONFIGURED', 'Maintenance is not configured.');
     const expected = Buffer.from(`Bearer ${secret}`), received = Buffer.from(request.headers.get('authorization') ?? '');
     if (expected.length !== received.length || !timingSafeEqual(expected, received)) throw new HttpError(401, 'UNAUTHORIZED', 'A maintenance credential is required.');
-    return privateJson(await purgeExpired());
+    const notices = await processAvailabilityNotices();
+    return privateJson({ ...await purgeExpired(), ...notices });
   } catch (error) { return apiError(error); }
 };

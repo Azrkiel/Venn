@@ -6,7 +6,7 @@ test.use({ timezoneId: 'America/New_York' });
 test('home opens group creation with readable essentials and no decorative instructions', async ({ page }, testInfo) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/venn$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Find a time together.');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Find a time, together.');
   await expect(page.getByLabel('Activity', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Create Venn', exact: true })).toBeVisible();
   await expect(page.getByText(/THE BASICS|Pick times|Dates \+ times|Whole dates|Friends pick dates/)).toHaveCount(0);

@@ -3,7 +3,7 @@ import { currentUserId, loginConfigured } from '@/auth';
 import { listGroups } from '@/features/groups/service';
 import { getOwnerRequest } from '@/features/requests/service';
 import { getDb } from '@/lib/db';
-import { VennMark } from '@/components/venn-mark';
+import { VennLogo } from '@/components/venn-logo';
 import { LiveClient } from './live-client';
 import styles from './live.module.css';
 
@@ -27,7 +27,7 @@ export default async function LivePage({ searchParams }: { searchParams: Promise
   const modelReady = Boolean(process.env.GEMINI_API_KEY?.trim() && process.env.GEMINI_MODEL?.trim());
   return <main className={styles.shell}>
     <nav className={styles.nav} aria-label="Venn navigation">
-      <Link className={styles.brand} href="/"><VennMark size={40} /><span>venn</span></Link>
+      <Link className={styles.brand} href="/"><VennLogo size={36} /></Link>
       <Link className={styles.navLink} href="/venn">Make a Venn</Link>
       <Link className={styles.navLink} href="/setup">Your connections</Link>
     </nav>

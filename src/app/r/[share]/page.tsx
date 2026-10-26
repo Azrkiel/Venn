@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { currentUserId } from '@/auth';
-import { VennMark } from '@/components/venn-mark';
+import { VennLogo } from '@/components/venn-logo';
 import { loadSharedPoll } from '@/features/polls/shared';
 import { HttpError } from '@/lib/http';
 import PollVoting from './poll-voting';
@@ -32,7 +32,7 @@ export default async function SharedPollPage({ params }: { params: Promise<{ sha
   const availability = shared?.kind === 'availability' ? shared.poll : null;
   const weekly = availability !== null && ['week', 'fortnight'].includes(availability.scale);
   return <main style={{ width: `min(${weekly ? '1100px' : '680px'}, calc(100% - 40px))`, margin: '0 auto', padding: '36px 0 60px' }}>
-    <Link href="/" className="brand" aria-label="Venn home"><VennMark /><span>venn</span></Link>
+    <Link href="/" className="brand" aria-label="Venn home"><VennLogo /></Link>
     <p className="eyebrow" style={{ marginTop: weekly ? 26 : 40 }}>LET&apos;S FIND A TIME, TOGETHER</p>
     <h1 style={{ marginBottom: 16, fontSize: 'clamp(2.375rem, 7vw, 3.25rem)', overflowWrap: 'anywhere' }}>{availability
       ? <>{availability.activity}{!/[.!?…]$/.test(availability.activity) && <span>.</span>}</> : <>A little time.<br /><span>A good overlap.</span></>}</h1>

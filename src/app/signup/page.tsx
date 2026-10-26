@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { currentUserId, loginConfigured, signIn } from '@/auth';
-import { VennMark } from '@/components/venn-mark';
+import { VennLogo } from '@/components/venn-logo';
 import styles from '@/app/venn/venn.module.css';
 import { safeSignupReturnPath } from '@/features/identity/return-path';
 import { identityProviders } from '@/features/identity/providers';
@@ -15,7 +15,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const returnTo = safeSignupReturnPath((await searchParams).returnTo);
   const returning = returnTo !== '/venn';
   return <main className={styles.shell}>
-    <Link href="/" className="brand"><VennMark /><span>venn</span></Link>
+    <Link href="/" className="brand"><VennLogo /></Link>
     <header className={styles.intro}>
       <p className="eyebrow">A LITTLE OVERLAP GOES A LONG WAY</p>
       <h1>Your <span>next plan.</span></h1>

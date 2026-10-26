@@ -117,7 +117,7 @@ test('month date selection supports dragging and editing a single response', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('day availability paints a timed range with touch or mouse', async ({ page }) => {
+test('day availability paints a timed range with touch or mouse', async ({ page }, testInfo) => {
   const poll = await makePoll();
   const share = poll.path.split('/').at(-1)!;
   await page.goto(poll.path);
@@ -127,13 +127,14 @@ test('day availability paints a timed range with touch or mouse', async ({ page 
   await dragAcross(page, first, last);
   await expect(first).toHaveAttribute('aria-pressed', 'true');
   await expect(last).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('group', { name: 'Daily availability calendar', exact: true }).screenshot({ path: testInfo.outputPath('day-calendar.png') });
   await page.getByRole('button', { name: 'Save availability', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Make your own Venn', exact: true })).toBeVisible();
   const saved = await (await page.request.get(`/api/venns/${share}`)).json();
   expect(saved.ownResponse.ranges).toContainEqual({ start: '2030-01-15T17:00:00Z', end: '2030-01-15T18:00:00Z' });
 });
 
-test('two-week Venn collects dates and times and closes without losing readable results', async ({ page }) => {
+test('two-week Venn collects dates and times and closes without losing readable results', async ({ page, baseURL }) => {
   const poll = await makePoll('fortnight');
   const share = poll.path.split('/').at(-1)!;
   await page.goto(poll.path);
@@ -142,7 +143,7 @@ test('two-week Venn collects dates and times and closes without losing readable 
   await addTime(page, 'Dee', '11:00', '12:00');
   const saved = await (await page.request.get(`/api/venns/${share}`)).json();
   expect(saved.ownResponse.ranges).toContainEqual({ start: '2030-01-20T16:00:00Z', end: '2030-01-20T17:00:00Z' });
-  const unauthorized = await page.request.post(`/api/venns/${share}/close`, { headers: { origin: 'http://127.0.0.1:3000' } });
+  const unauthorized = await page.request.post(`/api/venns/${share}/close`, { headers: { origin: baseURL! } });
   expect(unauthorized.status()).toBe(503);
   expect((await unauthorized.json()).error.code).toBe('SETUP_REQUIRED');
   await getDb().availabilityPoll.updateMany({ where: { ownerId }, data: { closedAt: new Date() } });
@@ -153,7 +154,7 @@ test('two-week Venn collects dates and times and closes without losing readable 
   expect(closed.closed).toBe(true);
   expect(closed.respondentCount).toBe(1);
   const refused = await page.request.put(`/api/venns/${share}/availability`, {
-    headers: { origin: 'http://127.0.0.1:3000' }, data: { name: 'Dee', ranges: [] },
+    headers: { origin: baseURL! }, data: { name: 'Dee', ranges: [] },
   });
   expect(refused.status()).toBe(410);
 });

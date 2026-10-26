@@ -35,13 +35,13 @@ export default async function LivePage({ searchParams }: { searchParams: Promise
     <h1 className={styles.title}>Let&apos;s find<br /><span className={styles.titleAccent}>a time that fits.</span></h1>
     <p className={styles.intro}>One plan, a few good windows, and a reply you send yourself.</p>
     {!userId ? <section className={styles.card}>
-      <h2>{configured ? 'Start with your Google account' : 'Your live planner needs a connection'}</h2>
+      <h2>{configured ? 'Start with your account' : 'Your live planner needs a connection'}</h2>
       <p className={styles.intro}>{configured
         ? 'Sign in, then choose which calendars Venn can check. Your event titles stay private.'
-        : 'The sample planner is ready to explore. To check real calendars, finish the server setup and connect Google.'}</p>
+        : 'The sample planner is ready to explore. To check real calendars, finish setup and connect your calendars.'}</p>
       <div className={styles.buttonRow}><Link className={styles.button} href="/setup?returnTo=%2Flive">{configured ? 'Sign in and connect' : 'Open setup'}</Link>
         <Link className={`${styles.button} ${styles.secondary}`} href="/app">Explore sample calendars</Link></div>
-      <p className={styles.subtle}>Live requests use Google Calendar and Gemini. This page never substitutes sample availability for your calendar.</p>
+      <p className={styles.subtle}>Live requests check your selected calendars and use Gemini to interpret your plan. This page never substitutes sample availability for your calendar.</p>
     </section> : <LiveClient initialGroups={groups} initialRequest={initialRequest} timezone={timezone}
       modelReady={modelReady} initialError={loadError} calendarResult={typeof params.calendar === 'string' ? params.calendar : ''} />}
     <p className={styles.footer}>Venn checks busy/free time on selected calendars. You choose what to share, send, or save.</p>

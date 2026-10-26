@@ -72,7 +72,7 @@ export async function consumeOAuthState(userId: string, state: string) {
       throw new CalendarError('INVALID_CALENDAR_STATE', 400);
     }
     verifier = envelope.verifier;
-    if (saved.purpose === 'calendar' && 'returnTo' in envelope) returnTo = safeSharedReturnPath(envelope.returnTo);
+    if (['calendar', 'outlook'].includes(saved.purpose) && 'returnTo' in envelope) returnTo = safeSharedReturnPath(envelope.returnTo);
   }
   return { verifier, purpose: saved.purpose, requestId: saved.requestId, ...(returnTo ? { returnTo } : {}) };
 }
@@ -91,6 +91,7 @@ function parseTokens(value: unknown): Tokens {
 
 export async function finishCalendarConnection(userId: string, code: string, state: string, fetcher: typeof fetch = fetch) {
   const saved = await consumeOAuthState(userId, state);
+  if (!['calendar', 'write'].includes(saved.purpose)) throw new CalendarError('INVALID_CALENDAR_STATE', 400);
   if (!code || code.length > 4096) throw new CalendarError('INVALID_CALENDAR_CODE', 400);
   const config = calendarOAuthConfig();
   const response = await fetcher(tokenEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -104,7 +105,8 @@ export async function finishCalendarConnection(userId: string, code: string, sta
   const identityResponse = await fetcher('https://openidconnect.googleapis.com/v1/userinfo', {
     headers: { Authorization: `Bearer ${tokens.access_token}` }, signal: AbortSignal.timeout(12_000), cache: 'no-store' });
   const identity: unknown = identityResponse.ok ? await identityResponse.json() : null;
-  if (!account || !identity || typeof identity !== 'object' || !('sub' in identity) || identity.sub !== account.providerAccountId) {
+  if (!identity || typeof identity !== 'object' || !('sub' in identity) || typeof identity.sub !== 'string' || !identity.sub
+    || account && identity.sub !== account.providerAccountId) {
     throw new CalendarError('CALENDAR_ACCOUNT_MISMATCH', 403);
   }
   const scopes = tokens.scope?.split(/\s+/).filter(Boolean) ?? [];

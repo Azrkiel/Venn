@@ -52,7 +52,7 @@ export default function CalendarReferencePanel({ share, window, signedIn, onChan
   const unknown = failed || result?.state === 'unknown';
   return <section className={styles.calendarReference} aria-label="Your private calendar reference">
     <div className={styles.referenceBar}><div className={styles.referenceHeading}><CalendarDays size={16} aria-hidden="true" /><strong>Your calendar</strong><span>Only you</span></div>
-      {!signedIn ? <Link href={signup} aria-label="Sign up to sync your calendar" className={styles.referenceLink}>Sync calendar</Link> : <div className={styles.referenceActions}>
+      {!signedIn ? <Link href={signup} aria-label="Sign up to sync your calendar" className={styles.referenceLink}>Sync calendar</Link> : <div className={styles.referenceActions}><Link href={setup} className={styles.referenceLink}>Manage calendars</Link>
         <button type="button" className={styles.referenceToggle} aria-label={enabled ? 'Hide my calendar' : 'Show my calendar'} aria-pressed={enabled}
           onClick={() => { setEnabled(previous => !previous); onChange([], false); }}>{enabled ? 'Hide' : 'Show'}</button>
         {enabled && <button type="button" className={styles.refreshButton} aria-label="Refresh calendar" title="Refresh calendar" disabled={loading} onClick={() => setRefresh(value => value + 1)}><RefreshCw size={14} aria-hidden="true" /></button>}
@@ -63,10 +63,10 @@ export default function CalendarReferencePanel({ share, window, signedIn, onChan
           : result?.state === 'known' ? result.busy.length ? 'Busy times shown in grey.' : 'No busy times in this view.'
             : result?.state === 'no_calendars' ? 'Choose calendars to continue.'
               : result?.state === 'reconnect' ? 'Reconnect to check busy times.'
-                : result?.state === 'disconnected' ? 'Connect Google Calendar to continue.' : 'Choose a date to check.'}
+                : result?.state === 'disconnected' ? 'Connect a calendar to continue.' : 'Choose a date to check.'}
       </div>}
       {enabled && result && ['disconnected', 'reconnect', 'no_calendars'].includes(result.state) && <Link href={setup} className={styles.referenceLink}>
-        {result.state === 'no_calendars' ? 'Choose calendars' : result.state === 'reconnect' ? 'Reconnect Google Calendar' : 'Connect Google Calendar'}
+        {result.state === 'no_calendars' ? 'Choose calendars' : result.state === 'reconnect' ? 'Reconnect calendar' : 'Connect a calendar'}
       </Link>}
       {enabled && unknown && <Link href={setup} className={styles.referenceLink}>Check your calendar connection</Link>}
     </>}

@@ -2,6 +2,8 @@ import type { NextConfig } from 'next';
 
 const config: NextConfig = {
   poweredByHeader: false,
+  // Keep `next dev` from writing an AGENTS.md into the repo.
+  agentRules: false,
   outputFileTracingIncludes: { '/api/requests/*/card': ['./public/fonts/*'], '/api/webhooks/photon': ['./public/fonts/*'] },
   async headers() {
     return [{ source: '/(.*)', headers: [

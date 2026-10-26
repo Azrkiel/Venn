@@ -20,7 +20,9 @@ const providerBlurbs = { google: 'Personal, work, and shared calendars', outlook
 const messages: Record<string, string> = {
   disconnected: 'Calendar disconnected from Venn. You can also revoke its access in your provider account.',
   'apple-failed': 'iCloud could not connect. Check your Apple Account email and app-specific password, then try again.',
-  'apple-password': 'Use your Apple Account email and an app-specific password from your Apple Account settings.',
+  'outlook-failed': 'Outlook could not connect. Please try again in a moment.',
+  'outlook-no-mailbox': 'This Microsoft account has no Outlook calendar. Use an Outlook.com or Microsoft 365 account, or connect Google or iCloud instead.',
+  'apple-password':'Use your Apple Account email and an app-specific password from your Apple Account settings.',
   connected: 'Calendar connected. Choose which calendars Venn should check below.',
   updated: 'Calendar coverage updated. Previous options will need a fresh check.',
   declined: 'Calendar access was declined. You can still explore the labelled sample calendars.',
@@ -93,7 +95,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
           <div className={styles.providerText}><h3>{providerNames[provider]}</h3><p>{providerBlurbs[provider]}</p></div></>;
         return <section key={provider} className={styles.provider} aria-label={providerNames[provider]}>
           {provider === 'apple' && ready && state !== 'connected' ? <details className={styles.appleForm}>
-            <summary className={styles.providerRow}>{heading}<span className={styles.connect}>{verb} Apple iCloud</span></summary>
+            <summary className={styles.providerRow} aria-label={`${verb} Apple iCloud`}>{heading}<span className={styles.connect}>{verb}</span></summary>
             <form action="/api/calendar/apple/connect" method="post">
               {sharedReturn && <input type="hidden" name="returnTo" value={sharedReturn} />}
               <p>Use an <a href="https://account.apple.com/" target="_blank" rel="noopener noreferrer">app-specific password</a>, not your regular Apple password. It&apos;s encrypted, and you can revoke it anytime.</p>
@@ -106,7 +108,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
               : !ready && provider !== 'google' ? <span className={styles.soonPill}>Coming soon</span>
               : <form action="/api/calendar/connect" method="post">
                 <input type="hidden" name="provider" value={provider} />{sharedReturn && <input type="hidden" name="returnTo" value={sharedReturn} />}
-                <button className={styles.connect} disabled={!userId || !ready}>{verb} {providerNames[provider]}</button>
+                <button className={styles.connect} disabled={!userId || !ready} aria-label={`${verb} ${providerNames[provider]}`}>{verb}</button>
               </form>}
           </div>}
           {items.map(item => <div key={item.id} className={styles.calendarRow}>

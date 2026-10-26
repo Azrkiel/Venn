@@ -13,7 +13,7 @@ test('sync offers Google, Microsoft and iCloud after requiring sign-in', async (
   await expect(page.getByRole('button', { name: 'Continue with Microsoft', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Connect Google Calendar', exact: true })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Connect Microsoft Outlook', exact: true })).toBeDisabled();
-  await page.getByText('Connect Apple iCloud', { exact: true }).click();
+  await page.getByRole('region', { name: 'Apple iCloud', exact: true }).getByText('Connect', { exact: true }).click();
   await expect(page.getByLabel('Apple Account email', { exact: true })).toBeDisabled();
   await expect(page.getByLabel('App-specific password', { exact: true })).toBeDisabled();
   await page.goto(`/signup?returnTo=${encodeURIComponent(setup)}`);
@@ -63,7 +63,7 @@ test.describe('signed-in calendar setup', () => {
     expect(consent?.searchParams.get('code_challenge_method')).toBe('S256');
     expect(consent?.searchParams.get('scope')).toContain('Calendars.ReadBasic');
     await page.goto(setup);
-    await page.getByText('Connect Apple iCloud', { exact: true }).click();
+    await page.getByRole('region', { name: 'Apple iCloud', exact: true }).getByText('Connect', { exact: true }).click();
     await page.getByLabel('Apple Account email', { exact: true }).fill('tester@example.com');
     await page.getByLabel('App-specific password', { exact: true }).fill('wrong-password');
     await page.getByRole('button', { name: 'Connect iCloud calendars', exact: true }).click();

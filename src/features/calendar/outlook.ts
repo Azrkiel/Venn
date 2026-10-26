@@ -92,7 +92,17 @@ async function graphPages(url: string, token: string, fetcher: typeof fetch): Pr
     seen.add(url);
     const response = await fetcher(url, { headers: { Authorization: `Bearer ${token}`, Prefer: 'outlook.timezone="UTC"' },
       cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(12_000) });
-    if (!response.ok) throw new CalendarError('CALENDAR_LIST_UNAVAILABLE');
+    if (!response.ok) {
+      // Only Graph's error code is logged; bodies can echo account details.
+      const failure: unknown = await response.json().catch(() => null);
+      const code = object(failure) && object(failure.error) && typeof failure.error.code === 'string' ? failure.error.code.slice(0, 80) : 'unknown';
+      // Graph explains 401s in WWW-Authenticate (error codes and descriptions, never token values).
+      const challenge = response.headers.get('www-authenticate')?.replace(/authorization_uri="[^"]*"/g, '').slice(0, 300) ?? '';
+      console.warn('[outlook] graph_request_failed', { status: response.status, code, challenge });
+      // Microsoft accounts made with another provider's email address have no Outlook mailbox or calendar.
+      if (code === 'MailboxNotEnabledForRESTAPI' || code === 'MailboxNotSupportedForRESTAPI') throw new CalendarError('OUTLOOK_MAILBOX_UNAVAILABLE', 409);
+      throw new CalendarError('CALENDAR_LIST_UNAVAILABLE');
+    }
     const data: unknown = await response.json();
     if (!object(data) || !Array.isArray(data.value) || !data.value.every(object)) throw new CalendarError('CALENDAR_LIST_UNAVAILABLE');
     items.push(...data.value);

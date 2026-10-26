@@ -18,5 +18,12 @@ export async function GET(request: Request) {
       returnTo = saved.returnTo;
     } else returnTo = await finishOutlookConnection(userId, params.get('code') ?? '', state);
     return Response.redirect(new URL(setupReturnPath(returnTo, params.has('error') ? 'declined' : 'connected'), process.env.APP_BASE_URL?.trim() || request.url), 303);
-  } catch (error) { return calendarRouteError(error); }
+  } catch (error) {
+    // A signed-in browser returning from Microsoft gets a readable setup page instead of raw JSON.
+    if (error instanceof CalendarError && !['SIGN_IN_REQUIRED', 'INVALID_CALENDAR_STATE'].includes(error.code)) {
+      return Response.redirect(new URL(setupReturnPath(undefined, error.code === 'OUTLOOK_MAILBOX_UNAVAILABLE' ? 'outlook-no-mailbox' : 'outlook-failed'),
+        process.env.APP_BASE_URL?.trim() || request.url), 303);
+    }
+    return calendarRouteError(error);
+  }
 }

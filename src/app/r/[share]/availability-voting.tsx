@@ -9,7 +9,7 @@ import { browserGuestKey } from '@/features/availability/browser-identity';
 import { pictureSubmission, type PictureDraft } from '@/features/profile-pictures/schema';
 import { ProfilePicture } from '@/components/profile-picture';
 import { ProfilePicturePicker } from '@/components/profile-picture-picker';
-import { dateCells, filterTimeCells, paintSelection, parseWallTime, rangesToSelection, selectionToRanges, type SelectionRange, type TimeSection } from './selection';
+import { dateCells, paintSelection, parseWallTime, rangesToSelection, selectionToRanges, type SelectionRange } from './selection';
 import styles from './availability.module.css';
 import WeeklyCalendar from './weekly-calendar';
 import CalendarReferencePanel from './calendar-reference';
@@ -44,7 +44,6 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   const [selected, setSelected] = useState(() => rangesToSelection(initial.buckets, initial.ownResponse?.ranges ?? []));
   const [viewZone, setViewZone] = useState(poll.timezone);
   const [chosenDate, setChosenDate] = useState(poll.startDate);
-  const [timeSection, setTimeSection] = useState<TimeSection>('afternoon');
   const [month, setMonth] = useState(() => DateTime.fromISO(initial.startDate, { zone: 'UTC' }).startOf('month').toISODate()!);
   const [from, setFrom] = useState('12:00');
   const [until, setUntil] = useState('13:00');
@@ -80,8 +79,6 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   const dates = useMemo(() => timed ? [...new Set(allCells.map(cell => localDate(cell.start, viewZone)))]
     : allCells.map(cell => cell.start), [allCells, timed, viewZone]);
   const date = dates.includes(chosenDate) ? chosenDate : dates[0] ?? poll.startDate;
-  const visibleCells = useMemo(() => timed ? filterTimeCells(allCells.filter(cell => localDate(cell.start, viewZone) === date), viewZone, timeSection)
-    : [], [allCells, timed, date, viewZone, timeSection]);
   const monthStart = DateTime.fromISO(month, { zone: 'UTC' });
   const monthDates = dateCells(month, monthStart.endOf('month').toISODate()!);
   const selectedRanges = useMemo(() => selectionToRanges(allCells, selected), [allCells, selected]);
@@ -288,7 +285,7 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
       <p className={styles.deadline}><Clock3 size={14} aria-hidden="true" />{poll.closed ? 'Voting closed' : `Closes ${DateTime.fromISO(poll.closesAt, { zone: poll.timezone }).toFormat('MMM d, h:mm a ZZZZ')}`}</p>
       <span className={styles.respondents}><Users size={14} aria-hidden="true" />{poll.respondentCount} {poll.respondentCount === 1 ? 'response' : 'responses'}</span>
     </header>
-    <form onSubmit={save} aria-busy={saving} className={`${styles.card} ${weekly ? styles.weeklyCard : ''}`}>
+    <form onSubmit={save} aria-busy={saving} className={`${styles.card} ${timed ? styles.weeklyCard : ''}`}>
       <div className={styles.formHeading}><h3>Your availability</h3>{!poll.closed && <p>Drag to select. Tap to undo.</p>}</div>
       <div className={timed ? styles.controlRow : undefined}>
         <label className={styles.field}><span>Your name</span><input required maxLength={40} value={name} onChange={event => updateName(event.target.value)} disabled={!canEdit} placeholder="e.g. Sam" autoComplete="given-name" /></label>
@@ -299,26 +296,10 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
       <ProfilePicturePicker share={share} value={picture} onChange={updatePicture} disabled={!canEdit} name={name} />
       <CalendarReferencePanel share={share} window={calendarWindow} signedIn={signedIn} onChange={calendarChanged} />
       {timed ? <>
-        {!weekly && <div className={styles.controlRow}>
-          <label className={styles.field}><span>Date</span><select aria-label="Date" value={date} onChange={event => setChosenDate(event.target.value)} disabled={unavailable}>
-            {dates.map(value => <option key={value} value={value}>{DateTime.fromISO(value).toFormat('EEE, MMM d')}</option>)}
-          </select></label>
-          <label className={styles.field}><span>Time of day</span><select aria-label="Time of day" value={timeSection} onChange={event => setTimeSection(event.target.value as TimeSection)}>
-            <option value="overnight">Overnight · 12–6 am</option><option value="morning">Morning · 6 am–noon</option>
-            <option value="afternoon">Afternoon · noon–6 pm</option><option value="evening">Evening · 6 pm–12 am</option><option value="all">Whole day</option>
-          </select></label>
-        </div>}
         {viewZone !== poll.timezone && <p className={styles.hint}>Organizer: {poll.timezone.replaceAll('_', ' ')}</p>}
-        {weekly && <WeeklyCalendar cells={allCells} buckets={poll.buckets} selected={selected} onChange={updateSelection} timezone={viewZone} disabled={!canEdit}
-          busy={calendar.busy} calendarKnown={calendar.known} onWindowChange={weekWindowChanged} />}
-        {!weekly && <div className={styles.timePicker} ref={gridRef} role="group" aria-label="Drag to select times"
-          onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
-          {visibleCells.map(cell => {
-            const instant = DateTime.fromISO(cell.start, { zone: viewZone });
-            return cellButton(cell, `Select ${instant.toFormat('yyyy-MM-dd h:mm a ZZ')}`, <><span>{instant.toFormat('h:mm a')}</span>
-              {instant.getPossibleOffsets().length > 1 && <span className={styles.cellOffset}>{instant.toFormat('ZZ')}</span>}</>);
-          })}
-        </div>}
+        <WeeklyCalendar cells={allCells} buckets={poll.buckets} selected={selected} onChange={updateSelection} timezone={viewZone} disabled={!canEdit}
+          busy={calendar.busy} calendarKnown={calendar.known} onWindowChange={weekly ? weekWindowChanged : undefined}
+          day={weekly ? undefined : date} onDayChange={setChosenDate} />
         <details className={styles.timeAlternative}>
           <summary>Or enter a time window</summary>
           {weekly && <label className={styles.field} style={{ marginTop: 16 }}><span>Date</span><select aria-label="Date" value={date} onChange={event => setChosenDate(event.target.value)} disabled={!canEdit}>
@@ -346,7 +327,7 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
         </div>
         <p className={styles.hint}>Whole days · {poll.timezone.replaceAll('_', ' ')}</p>
       </div>}
-      {!weekly && <details className={styles.help}><summary>Help</summary><p>{timed ? 'Choose a date, then drag over 15-minute blocks. Use a different time-of-day section for other hours; selections stay in place.' : 'Choose whole dates now. Set exact times closer to the plan.'} Use Tab to move between choices and Enter or Space to select.</p></details>}
+      {!timed && <details className={styles.help}><summary>Help</summary><p>Choose whole dates now. Set exact times closer to the plan. Use Tab to move between choices and Enter or Space to select.</p></details>}
       <div className={styles.selectionSummary}>
         <strong>{selected.size > 0 ? `${timed ? selectedRanges.length : selected.size} ${timed ? (selectedRanges.length === 1 ? 'time window' : 'time windows') : (selected.size === 1 ? 'date' : 'dates')} selected` : 'Nothing selected'}</strong>
         {canEdit && selected.size > 0 && <button type="button" className={styles.textButton} onClick={() => updateSelection(new Set())}>Clear</button>}

@@ -117,7 +117,7 @@ test('month date selection supports dragging and editing a single response', asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
-test('day availability paints a timed range with touch or mouse', async ({ page }) => {
+test('day availability paints a timed range with touch or mouse', async ({ page }, testInfo) => {
   const poll = await makePoll();
   const share = poll.path.split('/').at(-1)!;
   await page.goto(poll.path);
@@ -127,6 +127,7 @@ test('day availability paints a timed range with touch or mouse', async ({ page 
   await dragAcross(page, first, last);
   await expect(first).toHaveAttribute('aria-pressed', 'true');
   await expect(last).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('group', { name: 'Daily availability calendar', exact: true }).screenshot({ path: testInfo.outputPath('day-calendar.png') });
   await page.getByRole('button', { name: 'Save availability', exact: true }).click();
   await expect(page.getByRole('link', { name: 'Make your own Venn', exact: true })).toBeVisible();
   const saved = await (await page.request.get(`/api/venns/${share}`)).json();

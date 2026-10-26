@@ -10,6 +10,7 @@ type Props = {
   cells: WeekRange[]; buckets: (WeekRange & { count: number })[]; selected: Set<string>;
   onChange: (next: Set<string>) => void; timezone: string; disabled: boolean;
   busy?: WeekRange[]; calendarKnown?: boolean; onWindowChange?: (window: WeekRange) => void;
+  day?: string; onDayChange?: (date: string) => void;
 };
 type Drag = {
   pointerId: number; anchor: WeekCoordinate; baseline: Set<string>; enabled: boolean;
@@ -18,7 +19,7 @@ type Drag = {
 const coordinateKey = (cell: WeekCoordinate) => `${cell.date}:${cell.row}`;
 const clockLabel = (minute: number) => DateTime.utc(2000, 1, 1).plus({ minutes: minute }).toFormat('h a');
 
-export default function WeeklyCalendar({ cells, buckets, selected, onChange, timezone, disabled, busy = [], calendarKnown, onWindowChange }: Props) {
+export default function WeeklyCalendar({ cells, buckets, selected, onChange, timezone, disabled, busy = [], calendarKnown, onWindowChange, day, onDayChange }: Props) {
   const grid = useMemo(() => buildWeekGrid(cells, timezone), [cells, timezone]);
   const [page, setPage] = useState(0);
   const [focusKey, setFocusKey] = useState('');
@@ -32,7 +33,10 @@ export default function WeeklyCalendar({ cells, buckets, selected, onChange, tim
   const notifiedWindow = useRef('');
   const pageCount = Math.max(1, Math.ceil(grid.dates.length / 7));
   const currentPage = Math.min(page, pageCount - 1);
-  const dates = weekPageDates(grid.dates, currentPage);
+  const daily = day !== undefined;
+  const activeDay = day && grid.dates.includes(day) ? day : grid.dates[0];
+  const dayIndex = grid.dates.indexOf(activeDay);
+  const dates = daily ? (activeDay ? [activeDay] : []) : weekPageDates(grid.dates, currentPage);
   const counts = useMemo(() => new Map(buckets.map(bucket => [bucket.start, bucket.count])), [buckets]);
   const highestCount = Math.max(1, ...buckets.map(bucket => bucket.count));
   const tenAmRow = grid.rows.findIndex(row => row.minute === 600 && row.fold === 0);
@@ -180,15 +184,20 @@ export default function WeeklyCalendar({ cells, buckets, selected, onChange, tim
   const firstDate = dates[0] ? DateTime.fromISO(dates[0], { zone: 'UTC' }) : null;
   const lastDate = dates.at(-1) ? DateTime.fromISO(dates.at(-1)!, { zone: 'UTC' }) : null;
 
-  return <section className={styles.calendar} role="group" aria-label="Weekly availability calendar">
+  return <section className={`${styles.calendar} ${daily ? styles.daily : ''}`} role="group" aria-label={daily ? 'Daily availability calendar' : 'Weekly availability calendar'}>
     <div className={styles.toolbar}>
-      <h4>{firstDate?.toFormat('MMM d')}–{lastDate?.toFormat(firstDate?.hasSame(lastDate, 'month') ? 'd, yyyy' : 'MMM d, yyyy')}</h4>
+      {daily && <div className={styles.weekNav}>
+        <button className={styles.todayButton} type="button" disabled={!grid.dates.includes(today)} onClick={() => onDayChange?.(today)}>Today</button>
+        <button type="button" aria-label="Previous day" disabled={dayIndex <= 0} onClick={() => onDayChange?.(grid.dates[dayIndex - 1])}><ChevronLeft size={17} /></button>
+        <button type="button" aria-label="Next day" disabled={dayIndex < 0 || dayIndex >= grid.dates.length - 1} onClick={() => onDayChange?.(grid.dates[dayIndex + 1])}><ChevronRight size={17} /></button>
+      </div>}
+      <h4>{daily ? firstDate?.toFormat('MMMM d, yyyy') : <>{firstDate?.toFormat('MMM d')}–{lastDate?.toFormat(firstDate?.hasSame(lastDate, 'month') ? 'd, yyyy' : 'MMM d, yyyy')}</>}</h4>
       {pageCount > 1 && <div className={styles.weekNav}><button type="button" aria-label="Previous week" disabled={currentPage === 0} onClick={() => changePage(currentPage - 1)}><ChevronLeft size={17} /></button>
         <span>{currentPage + 1} / {pageCount}</span><button type="button" aria-label="Next week" disabled={currentPage + 1 >= pageCount} onClick={() => changePage(currentPage + 1)}><ChevronRight size={17} /></button></div>}
     </div>
-    <div className={styles.mobilePan}><button type="button" onClick={() => panDays(-1)} aria-label="Scroll days earlier"><ChevronLeft size={15} />Earlier days</button>
-      <button type="button" onClick={() => panDays(1)} aria-label="Scroll days later">Later days<ChevronRight size={15} /></button></div>
-    <div className={styles.scrollFrame} ref={scrollRef} data-testid="week-calendar-scroll" tabIndex={0} aria-label="Scroll weekly calendar">
+    {!daily && <div className={styles.mobilePan}><button type="button" onClick={() => panDays(-1)} aria-label="Scroll days earlier"><ChevronLeft size={15} />Earlier days</button>
+      <button type="button" onClick={() => panDays(1)} aria-label="Scroll days later">Later days<ChevronRight size={15} /></button></div>}
+    <div className={styles.scrollFrame} ref={scrollRef} data-testid="week-calendar-scroll" tabIndex={0} aria-label={daily ? 'Scroll daily calendar' : 'Scroll weekly calendar'}>
       <div className={styles.canvas} ref={canvasRef} style={{ gridTemplateRows: `64px repeat(${grid.rows.length}, var(--quarter-height))` }}
         onPointerDown={begin} onPointerMove={move} onPointerUp={event => finish(event)} onPointerCancel={event => finish(event, true)}
         onLostPointerCapture={event => finish(event, true)}>
@@ -230,7 +239,7 @@ export default function WeeklyCalendar({ cells, buckets, selected, onChange, tim
     </div>
     <div className={styles.legend}><span><i className={styles.selectedSwatch} />Your availability</span><span><i className={styles.overlapSwatch} />Group overlap</span>
       {(calendarKnown || busy.length > 0) && <span><i className={styles.busySwatch} />Your calendar: busy · only you</span>}<span className={styles.zone}>{timezone.replaceAll('_', ' ')}</span></div>
-    <details className={styles.help}><summary>Help</summary><p>Drag across days to select the same hours on each. Scroll the time labels to move through the day; swipe the headings to see more dates. Use arrow keys to move and Enter or Space to select.</p>
+    <details className={styles.help}><summary>Help</summary><p>{daily ? 'Drag down the timeline to select a time window. Drag over a selected time to clear it. Scroll the time labels to move through the day.' : 'Drag across days to select the same hours on each. Scroll the time labels to move through the day; swipe the headings to see more dates.'} Use arrow keys to move and Enter or Space to select.</p>
       {(calendarKnown || busy.length > 0) && <p>Grey blocks are from your calendar, visible only to you. You can still select a busy time.</p>}</details>
   </section>;
 }

@@ -16,6 +16,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   calendarGrant CalendarGrant?
+  providerCalendarGrants ProviderCalendarGrant[]
   ownedGroups   Group[]
   memberships   Membership[]
   requests      SchedulingRequest[]
@@ -78,6 +79,31 @@ model SelectedCalendar {
   enabled      Boolean @default(true)
   writable     Boolean @default(false)
   grant        CalendarGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
+  @@unique([grantId, calendarId])
+}
+
+// Google keeps its existing grant, including the separate owner-event write consent.
+model ProviderCalendarGrant {
+  id               String @id @default(cuid())
+  userId           String
+  provider         String
+  encryptedAccess  String
+  encryptedRefresh String?
+  expiresAt        DateTime
+  needsReconnect   Boolean @default(false)
+  refreshLockUntil DateTime?
+  user             User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  calendars        ProviderCalendar[]
+  @@unique([userId, provider])
+}
+
+model ProviderCalendar {
+  id         String @id @default(cuid())
+  grantId    String
+  calendarId String
+  name       String
+  enabled    Boolean @default(false)
+  grant      ProviderCalendarGrant @relation(fields: [grantId], references: [id], onDelete: Cascade)
   @@unique([grantId, calendarId])
 }
 

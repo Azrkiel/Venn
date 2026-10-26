@@ -3,6 +3,7 @@ import { currentUserId, loginConfigured, signIn } from '@/auth';
 import { VennMark } from '@/components/venn-mark';
 import styles from '@/app/venn/venn.module.css';
 import { safeSignupReturnPath } from '@/features/identity/return-path';
+import { identityProviders } from '@/features/identity/providers';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,9 +23,10 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
       <h2>{returning ? 'Your calendar, for your eyes.' : userId ? 'Your next Venn is waiting.' : 'Make your own Venn.'}</h2>
       <p className={styles.copy}>{returning ? 'Your busy times stay private. Your group sees only the availability you save.' : 'Create a Venn. Friends answer without an account.'}</p>
       {userId ? <Link href={returnTo} className={styles.primary}>{returning ? 'Continue to your Venn' : 'Create a Venn'}</Link>
-        : <form action={async () => { 'use server'; if (loginConfigured()) await signIn('google', { redirectTo: returnTo }); }}>
-          <button className={styles.primary} disabled={!configured}>Continue with Google</button>
-        </form>}
+        : identityProviders().map(provider => <form key={provider.id} style={{ marginTop: 12 }} action={async () => { 'use server';
+          if (loginConfigured() && identityProviders().some(item => item.id === provider.id && item.configured)) await signIn(provider.id, { redirectTo: returnTo }); }}>
+          <button className={styles.primary} disabled={!configured || !provider.configured}>Continue with {provider.name}</button>
+        </form>)}
       {!userId && !configured && <p className={styles.hint} style={{ marginTop: 16 }}>Sign-up is unavailable. Try again later.</p>}
       <p className={styles.hint} style={{ marginTop: 20 }}>Calendar access is optional.</p>
     </section>

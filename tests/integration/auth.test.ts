@@ -24,6 +24,12 @@ describe('Google identity boundary', () => {
     expect(loginConfigured()).toBe(false);
     expect(await currentUserId()).toBeNull();
   });
+  it('can sign in with Microsoft when Google is not configured', () => {
+    vi.stubEnv('DATABASE_URL', 'postgresql://localhost/test'); vi.stubEnv('AUTH_SECRET', 'test-secret');
+    vi.stubEnv('AUTH_GOOGLE_ID', ''); vi.stubEnv('AUTH_GOOGLE_SECRET', '');
+    vi.stubEnv('AUTH_MICROSOFT_ENTRA_ID_ID', 'client'); vi.stubEnv('AUTH_MICROSOFT_ENTRA_ID_SECRET', 'secret');
+    expect(loginConfigured()).toBe(true);
+  });
 });
 
 describe('Calendar consent state', () => {

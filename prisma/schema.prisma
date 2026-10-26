@@ -299,6 +299,9 @@ model AvailabilityResponse {
   voterKey  String
   name      String
   ranges    Json
+  avatarId  String?
+  photo     Bytes?
+  photoKey  String? @unique
   updatedAt DateTime @updatedAt
   poll      AvailabilityPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
   @@unique([pollId, voterKey])

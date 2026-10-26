@@ -3,9 +3,12 @@ import { defineConfig, devices } from '@playwright/test';
 
 const CI = !!process.env.CI;
 const authenticated = process.env.VENN_AUTH_E2E === '1';
-const baseURL = 'http://127.0.0.1:3000';
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
+if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error('Use a valid PLAYWRIGHT_PORT.');
+const baseURL = `http://127.0.0.1:${port}`;
 // `npm run verify` already builds in CI; only rebuild if no production build exists.
-const ciCommand = existsSync('.next/BUILD_ID') ? 'npm run start' : 'npm run build && npm run start';
+const startCommand = `npm run start -- --port ${port}`;
+const ciCommand = existsSync('.next/BUILD_ID') ? startCommand : `npm run build && ${startCommand}`;
 
 export default defineConfig({
   testDir: 'tests/e2e',
@@ -31,7 +34,7 @@ export default defineConfig({
   ],
   webServer: {
     // CI serves the production bundle. Locally, `npm run dev` is reused when already running.
-    command: CI ? ciCommand : 'npm run dev',
+    command: CI ? ciCommand : `npm run dev -- --port ${port}`,
     url: baseURL,
     reuseExistingServer: !CI,
     timeout: CI ? 300_000 : 120_000,

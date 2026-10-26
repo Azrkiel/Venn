@@ -6,6 +6,9 @@ import { DateTime } from 'luxon';
 import { ArrowUpRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, LoaderCircle, Users } from 'lucide-react';
 import type { AvailabilityPollView } from '@/features/availability/service';
 import { browserGuestKey } from '@/features/availability/browser-identity';
+import { pictureSubmission, type PictureDraft } from '@/features/profile-pictures/schema';
+import { ProfilePicture } from '@/components/profile-picture';
+import { ProfilePicturePicker } from '@/components/profile-picture-picker';
 import { dateCells, filterTimeCells, paintSelection, parseWallTime, rangesToSelection, selectionToRanges, type SelectionRange, type TimeSection } from './selection';
 import styles from './availability.module.css';
 import WeeklyCalendar from './weekly-calendar';
@@ -37,6 +40,7 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   const allCells = useMemo<SelectionRange[]>(() => timed
     ? poll.buckets.map(({ start, end }) => ({ start, end })) : dateCells(poll.startDate, poll.endDate), [timed, poll.buckets, poll.startDate, poll.endDate]);
   const [name, setName] = useState(initial.ownResponse?.name ?? '');
+  const [picture, setPicture] = useState<PictureDraft>(initial.ownResponse?.picture ?? null);
   const [selected, setSelected] = useState(() => rangesToSelection(initial.buckets, initial.ownResponse?.ranges ?? []));
   const [viewZone, setViewZone] = useState(poll.timezone);
   const [chosenDate, setChosenDate] = useState(poll.startDate);
@@ -62,12 +66,13 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   const [draftInitial] = useState(() => {
     const selected = rangesToSelection(initial.buckets, initial.ownResponse?.ranges ?? []);
     const name = initial.ownResponse?.name ?? '';
-    return { cells: initial.buckets, name, selected, closed: initial.closed,
-      base: draftBaseFingerprint(initial.ownResponse ? { name, selected } : null) };
+    const picture = initial.ownResponse?.picture ?? null;
+    return { cells: initial.buckets, name, selected, picture, closed: initial.closed,
+      base: draftBaseFingerprint(initial.ownResponse ? { name, selected, picture } : null) };
   });
   const draftKeyRef = useRef<string | null>(null);
   const draftBaseRef = useRef(draftInitial.base);
-  const draftStateRef = useRef({ name: draftInitial.name, selected: draftInitial.selected });
+  const draftStateRef = useRef({ name: draftInitial.name, selected: draftInitial.selected, picture: draftInitial.picture as PictureDraft });
   const drag = useRef<Drag | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const basePath = `/api/venns/${encodeURIComponent(share)}`;
@@ -109,9 +114,10 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
         const draft = readAvailabilityDraft(sessionStorage, key, draftInitial.cells, draftInitial.base);
         if (!draft) return;
         const restored = new Set(draft.selected);
-        draftStateRef.current = { name: draft.name, selected: restored };
+        const restoredPicture = draft.picture === undefined ? draftInitial.picture : draft.picture;
+        draftStateRef.current = { name: draft.name, selected: restored, picture: restoredPicture };
         dirtyRef.current = true; requestRevision.current++;
-        setName(draft.name); setSelected(restored); setDirty(true); setSaveConfirmed(false);
+        setName(draft.name); setSelected(restored); setPicture(restoredPicture); setDirty(true); setSaveConfirmed(false);
         setMessage('Unsaved choices restored.');
       } catch { /* Draft recovery is optional; the response form stays usable. */ }
     }).catch(() => { /* Crypto or storage can be unavailable without blocking a response. */ });
@@ -144,9 +150,10 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
           if (!dirtyRef.current && !savingRef.current) {
             const nextName = next.ownResponse?.name ?? '';
             const nextSelection = rangesToSelection(next.buckets, next.ownResponse?.ranges ?? []);
-            setName(nextName); setSelected(nextSelection);
-            draftBaseRef.current = draftBaseFingerprint(next.ownResponse ? { name: nextName, selected: nextSelection } : null);
-            draftStateRef.current = { name: nextName, selected: nextSelection };
+            const nextPicture = next.ownResponse?.picture ?? null;
+            setName(nextName); setSelected(nextSelection); setPicture(nextPicture);
+            draftBaseRef.current = draftBaseFingerprint(next.ownResponse ? { name: nextName, selected: nextSelection, picture: nextPicture } : null);
+            draftStateRef.current = { name: nextName, selected: nextSelection, picture: nextPicture };
           }
         } else if ([404, 410].includes(response.status)) { setUnavailable(true); setError(readableError(value)); }
       } catch { /* A temporary refresh failure keeps the last observed results and all edits. */ }
@@ -160,14 +167,15 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   }, [basePath, revealNames]);
 
   function markDirty() { dirtyRef.current = true; setDirty(true); setSaveConfirmed(false); setMessage(''); }
-  function persistDraft(nextName: string, nextSelection: Set<string>) {
-    draftStateRef.current = { name: nextName, selected: nextSelection };
+  function persistDraft(nextName: string, nextSelection: Set<string>, nextPicture: PictureDraft = picture) {
+    draftStateRef.current = { name: nextName, selected: nextSelection, picture: nextPicture };
     if (!draftKeyRef.current) return;
-    try { writeAvailabilityDraft(sessionStorage, draftKeyRef.current, { name: nextName, selected: nextSelection, base: draftBaseRef.current }); }
+    try { writeAvailabilityDraft(sessionStorage, draftKeyRef.current, { name: nextName, selected: nextSelection, picture: nextPicture, base: draftBaseRef.current }); }
     catch { /* The site works when session storage is blocked. */ }
   }
   function updateSelection(next: Set<string>) { markDirty(); setSelected(next); persistDraft(name, next); }
   function updateName(next: string) { markDirty(); setName(next); persistDraft(next, selected); }
+  function updatePicture(next: PictureDraft) { markDirty(); setPicture(next); persistDraft(name, selected, next); }
 
   function pointerStart(event: PointerEvent<HTMLDivElement>) {
     if (!canEdit || (event.pointerType === 'mouse' && event.button !== 0)) return;
@@ -225,7 +233,7 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
     try {
       const guestKey = await browserGuestKey();
       const response = await fetch(`${basePath}/availability`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Venn-Guest-Key': guestKey },
-        body: JSON.stringify({ name: name.trim(), ranges: selectedRanges }) });
+        body: JSON.stringify({ name: name.trim(), ranges: selectedRanges, picture: pictureSubmission(picture) }) });
       const value = await response.json();
       if (!response.ok) {
         if (response.status === 410) setPoll(previous => ({ ...previous, closed: true }));
@@ -234,9 +242,10 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
       const next = value as AvailabilityPollView;
       setPoll(next); setName(next.ownResponse?.name ?? name);
       const nextSelection = rangesToSelection(next.buckets, next.ownResponse?.ranges ?? []);
-      setSelected(nextSelection);
-      draftBaseRef.current = draftBaseFingerprint(next.ownResponse ? { name: next.ownResponse.name, selected: nextSelection } : null);
-      draftStateRef.current = { name: next.ownResponse?.name ?? name, selected: nextSelection };
+      const nextPicture = next.ownResponse?.picture ?? null;
+      setSelected(nextSelection); setPicture(nextPicture);
+      draftBaseRef.current = draftBaseFingerprint(next.ownResponse ? { name: next.ownResponse.name, selected: nextSelection, picture: nextPicture } : null);
+      draftStateRef.current = { name: next.ownResponse?.name ?? name, selected: nextSelection, picture: nextPicture };
       if (draftKeyRef.current) {
         try { clearAvailabilityDraft(sessionStorage, draftKeyRef.current); } catch { /* Saving is already complete. */ }
       }
@@ -287,6 +296,7 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
           {[...new Set([viewZone, poll.timezone, 'UTC'])].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
         </select></label>}
       </div>
+      <ProfilePicturePicker share={share} value={picture} onChange={updatePicture} disabled={!canEdit} name={name} />
       <CalendarReferencePanel share={share} window={calendarWindow} signedIn={signedIn} onChange={calendarChanged} />
       {timed ? <>
         {!weekly && <div className={styles.controlRow}>
@@ -361,7 +371,8 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
       </li>)}</ol> : <div className={styles.emptyOverlap}><p>{poll.respondentCount ? 'No overlap yet. More answers may help.' : 'Waiting for the first answer.'}</p></div>}
       {ownResponse && <div className={styles.names}>
         <label><input type="checkbox" checked={revealNames} onChange={event => setRevealNames(event.target.checked)} />See who has answered</label>
-        {revealNames && <ul aria-label="Respondents">{poll.names?.map((value, index) => <li key={`${value}-${index}`}>{value}</li>)}</ul>}
+        {revealNames && <ul aria-label="Respondents">{(poll.respondents ?? poll.names?.map(name => ({ name, picture: null })))?.map((person, index) =>
+          <li key={`${person.name}-${index}`}><ProfilePicture share={share} picture={person.picture} name={person.name} size={34} decorative /><span>{person.name}</span></li>)}</ul>}
       </div>}
       {poll.isOwner && !poll.closed && <div className={styles.owner}><span>Have enough answers?</span><button type="button" className={styles.textButton} disabled={saving} onClick={close}>Close voting early</button></div>}
     </section>

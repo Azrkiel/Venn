@@ -133,7 +133,7 @@ test('day availability paints a timed range with touch or mouse', async ({ page 
   expect(saved.ownResponse.ranges).toContainEqual({ start: '2030-01-15T17:00:00Z', end: '2030-01-15T18:00:00Z' });
 });
 
-test('two-week Venn collects dates and times and closes without losing readable results', async ({ page }) => {
+test('two-week Venn collects dates and times and closes without losing readable results', async ({ page, baseURL }) => {
   const poll = await makePoll('fortnight');
   const share = poll.path.split('/').at(-1)!;
   await page.goto(poll.path);
@@ -142,7 +142,7 @@ test('two-week Venn collects dates and times and closes without losing readable 
   await addTime(page, 'Dee', '11:00', '12:00');
   const saved = await (await page.request.get(`/api/venns/${share}`)).json();
   expect(saved.ownResponse.ranges).toContainEqual({ start: '2030-01-20T16:00:00Z', end: '2030-01-20T17:00:00Z' });
-  const unauthorized = await page.request.post(`/api/venns/${share}/close`, { headers: { origin: 'http://127.0.0.1:3000' } });
+  const unauthorized = await page.request.post(`/api/venns/${share}/close`, { headers: { origin: new URL(baseURL!).origin } });
   expect(unauthorized.status()).toBe(503);
   expect((await unauthorized.json()).error.code).toBe('SETUP_REQUIRED');
   await getDb().availabilityPoll.updateMany({ where: { ownerId }, data: { closedAt: new Date() } });
@@ -153,7 +153,7 @@ test('two-week Venn collects dates and times and closes without losing readable 
   expect(closed.closed).toBe(true);
   expect(closed.respondentCount).toBe(1);
   const refused = await page.request.put(`/api/venns/${share}/availability`, {
-    headers: { origin: 'http://127.0.0.1:3000' }, data: { name: 'Dee', ranges: [] },
+    headers: { origin: new URL(baseURL!).origin }, data: { name: 'Dee', ranges: [] },
   });
   expect(refused.status()).toBe(410);
 });

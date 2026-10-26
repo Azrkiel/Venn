@@ -36,7 +36,7 @@ button { color: inherit; }
 .site-shell { min-height: 100vh; }
 .site-header { max-width: 1264px; height: 102px; margin: 0 auto; padding: 0 44px; display: flex; align-items: center; justify-content: space-between; gap: 30px; border-bottom: 1px solid var(--line); }
 .brand { display: inline-flex; align-items: center; gap: 11px; }
-.brand > span { font-family: var(--serif); font-size: 2.625rem; letter-spacing: -1.8px; line-height: 1; padding-bottom: 7px; }
+.venn-logo { display: block; flex-shrink: 0; }
 .header-nav { display: flex; align-items: center; gap: 34px; padding-right: 20px; }
 .header-nav a, .header-nav button { padding: 17px 0; font-size: 1.125rem; font-weight: 500; color: #77727b; background: none; border: 0; }
 .header-nav a[aria-current] { color: var(--ink); position: relative; }
@@ -266,9 +266,7 @@ h2 { font-family: var(--serif); font-size: 1.875rem; font-weight: 400; letter-sp
 }
 @media (max-width: 680px) {
   .site-header { height: 81px; padding: 0 22px; gap: 20px; }
-  .brand > span { font-size: 2.375rem; }
   .brand { gap: 8px; }
-  .brand > svg { width: 38px; }
   .header-nav { margin-left: auto; gap: 18px; }
   .header-nav a, .header-nav button { font-size: 1rem; }
   .header-nav button { display: none; }

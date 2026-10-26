@@ -1,12 +1,14 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
+import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
+import { identityProviders } from '@/features/identity/providers';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import type { AdapterAccount } from '@auth/core/adapters';
 import { getDb } from '@/lib/db';
 
 export function loginConfigured(): boolean {
   return Boolean(process.env.DATABASE_URL && process.env.AUTH_SECRET
-    && process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+    && identityProviders().some(provider => provider.configured));
 }
 
 /** Identity login does not need to retain OAuth bearer credentials. */
@@ -21,7 +23,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth(() => {
   const originalLink = adapter?.linkAccount;
   return {
     adapter: adapter ? { ...adapter, linkAccount: originalLink ? account => originalLink(stripLoginTokens(account)) : undefined } : undefined,
-    providers: configured ? [Google({ authorization: { params: { scope: 'openid email profile' } } })] : [],
+    providers: configured ? [
+      ...(identityProviders().find(provider => provider.id === 'google')?.configured ? [Google({ authorization: { params: { scope: 'openid email profile' } } })] : []),
+      ...(identityProviders().find(provider => provider.id === 'microsoft-entra-id')?.configured ? [MicrosoftEntraID({
+        issuer: 'https://login.microsoftonline.com/common/v2.0', authorization: { params: { scope: 'openid email profile' } },
+        profile(profile) { return { id: profile.sub, name: profile.name, email: profile.email ?? profile.preferred_username, image: null }; },
+      })] : []),
+    ] : [],
     session: { strategy: 'database' as const },
     pages: { signIn: '/setup' },
     callbacks: {

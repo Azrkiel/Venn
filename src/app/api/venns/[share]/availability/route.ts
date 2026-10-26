@@ -15,7 +15,8 @@ export async function PUT(request: Request, context: { params: Promise<{ share: 
     requireSameOrigin(request);
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unavailable';
     await consumeRateLimit(`venn-response:${ip}`, 30);
-    const input = await readJson(request, availabilityInputSchema, 65_536);
+    // One bounded JPEG plus the full supported set of availability ranges.
+    const input = await readJson(request, availabilityInputSchema, 131_072);
     const cookieStore = await cookies();
     const previous = cookieStore.get(AVAILABILITY_COOKIE)?.value;
     const browserKey = request.headers.get('x-venn-guest-key');

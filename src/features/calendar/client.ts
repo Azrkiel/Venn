@@ -2,6 +2,10 @@ import { getDb } from '@/lib/db';
 import type { Availability, Busy } from '@/features/scheduling/types';
 import { getAccessToken, OWNED_EVENTS_SCOPE } from './oauth';
 import { CalendarError } from './errors';
+import { outlookAccessToken, queryOutlookBusy } from './outlook';
+import { queryAppleBusy } from './apple';
+import { decryptToken } from './token-vault';
+import type { CalendarProvider } from './provider-store';
 
 type JsonObject = Record<string, unknown>;
 type Fetcher = typeof fetch;
@@ -67,19 +71,45 @@ export async function getUserAvailability(userId: string, window: Busy): Promise
   const unknown: Availability = { memberId: userId, state: 'unknown', busy: [] };
   try {
     const grant = await getDb().calendarGrant.findUnique({ where: { userId }, include: { calendars: { where: { enabled: true } } } });
-    if (!grant || grant.needsReconnect || !grant.calendars.length) return unknown;
-    const token = await getAccessToken(userId);
-    const busy = await queryFreeBusy(token, grant.calendars.map(calendar => calendar.calendarId), window);
-    return busy === null ? unknown : { memberId: userId, state: 'known', busy };
+    const providers = await getDb().providerCalendarGrant.findMany({ where: { userId }, include: { calendars: { where: { enabled: true } } } });
+    const selectedProviders = providers.filter(item => item.calendars.length > 0);
+    const googleSelected = !!grant?.calendars.length;
+    if ((!googleSelected && !selectedProviders.length) || (googleSelected && grant?.needsReconnect) || selectedProviders.some(item => item.needsReconnect)) return unknown;
+    const combined: Busy[] = [];
+    if (googleSelected && grant) {
+      const busy = await queryFreeBusy(await getAccessToken(userId), grant.calendars.map(calendar => calendar.calendarId), window);
+      if (busy === null) return unknown;
+      combined.push(...busy);
+    }
+    const timezone = selectedProviders.some(item => item.provider === 'apple')
+      ? (await getDb().user.findUnique({ where: { id: userId }, select: { timezone: true } }))?.timezone ?? 'UTC' : 'UTC';
+    for (const provider of selectedProviders) {
+      const ids = provider.calendars.map(calendar => calendar.calendarId);
+      const busy = provider.provider === 'outlook' ? await queryOutlookBusy(await outlookAccessToken(userId), ids, window)
+        : provider.provider === 'apple' ? await queryAppleBusy(decryptToken(provider.encryptedAccess, userId), ids, window, timezone) : null;
+      if (busy === null) return unknown;
+      combined.push(...busy);
+    }
+    return { memberId: userId, state: 'known', busy: combined };
   } catch { return unknown; }
 }
 
 export async function getCalendarStatus(userId: string) {
   const grant = await getDb().calendarGrant.findUnique({ where: { userId }, include: { calendars: { orderBy: { name: 'asc' } } } });
+  const external = await getDb().providerCalendarGrant.findMany({ where: { userId }, include: { calendars: { orderBy: { name: 'asc' } } } });
+  const providers = [
+    { provider: 'google' as CalendarProvider, state: !grant ? 'disconnected' : grant.needsReconnect ? 'reconnect' : 'connected' },
+    ...(['outlook', 'apple'] as const).map(provider => { const found = external.find(item => item.provider === provider);
+      return { provider, state: !found ? 'disconnected' : found.needsReconnect ? 'reconnect' : 'connected' }; }),
+  ];
   return {
-    state: !grant ? 'disconnected' : grant.needsReconnect ? 'reconnect' : 'connected',
+    state: providers.every(item => item.state === 'disconnected') ? 'disconnected' : providers.some(item => item.state === 'reconnect') ? 'reconnect' : 'connected',
     canWrite: grant?.scopes.includes(OWNED_EVENTS_SCOPE) ?? false,
-    calendars: grant?.calendars.map(calendar => ({ id: calendar.calendarId, name: calendar.name, enabled: calendar.enabled, writable: calendar.writable })) ?? [],
+    providers,
+    calendars: [
+      ...(grant?.calendars.map(calendar => ({ id: calendar.calendarId, name: calendar.name, enabled: calendar.enabled, writable: calendar.writable, provider: 'google' as CalendarProvider })) ?? []),
+      ...external.flatMap(item => item.calendars.map(calendar => ({ id: calendar.calendarId, name: calendar.name, enabled: calendar.enabled, writable: false, provider: item.provider as CalendarProvider }))),
+    ],
   };
 }
 

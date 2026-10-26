@@ -1,6 +1,6 @@
 .shell { width: min(660px, calc(100% - 40px)); margin: 0 auto; padding: 32px 0 70px; }
 .nav { display: flex; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 58px; }
-.brand { display: inline-flex; align-items: center; gap: 9px; font-family: var(--serif); font-size: 2.25rem; letter-spacing: -1px; }
+.brand { display: inline-flex; align-items: center; gap: 11px; font-family: var(--serif); font-size: 2.25rem; font-weight: 400; letter-spacing: 0; }
 .navLink { font-size: 1rem; color: #6b6074; min-height: 44px; display: inline-flex; align-items: center; }
 .eyebrow { color: #756981; font-size: 0.875rem; font-weight: 600; letter-spacing: 1.3px; margin-bottom: 13px; }
 .title { font-family: var(--serif); font-size: clamp(2.375rem, 6vw, 3.125rem); font-weight: 400; line-height: 1.15; letter-spacing: -1.4px; }

@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, CalendarDays, Check, ChevronDown, Copy, FlaskConical, RotateCcw, ShieldCheck, Users } from 'lucide-react';
 import { createDemoScenario, DEMO_ACTIVITIES, DEMO_GROUPS, formatDemoRange, makeDemoDraft, type DemoActivity, type DemoGroupId, type DemoScenarioInput } from '@/features/demo/scenario';
-import { VennMark } from './venn-mark';
+import { VennLogo } from './venn-logo';
 import { GroupAvatars } from './group-avatars';
 import { DayCard } from './day-card';
 import { SlotOption } from './slot-option';
@@ -63,7 +63,7 @@ export function Planner({ initialDate }: { initialDate: string }) {
     <div className="site-shell planner-shell">
       <a className="skip-link" href="#planner">Skip to planning</a>
       <header className="site-header">
-        <Link className="brand" href="/" aria-label="Venn home"><VennMark /><span>venn</span></Link>
+        <Link className="brand" href="/" aria-label="Venn home"><VennLogo /></Link>
         <nav className="header-nav" aria-label="Main navigation"><a href="#planner" aria-current="page">Sample planner</a><Link href="/live">Live planner</Link><Link href="/venn">Make a Venn</Link></nav>
       </header>
       <main className="main-wrap">

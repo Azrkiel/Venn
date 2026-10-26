@@ -1,6 +1,7 @@
 import { DateTime, IANAZone } from 'luxon';
 import { z } from 'zod';
 import { HttpError } from '@/lib/http';
+import { pictureInputSchema } from '@/features/profile-pictures/schema';
 
 export const availabilityScales = ['day', 'week', 'fortnight', 'month', 'months', 'year'] as const;
 export type AvailabilityScale = typeof availabilityScales[number];
@@ -35,6 +36,7 @@ export type AvailabilityPollInput = z.infer<typeof availabilityPollSchema>;
 
 export const availabilityInputSchema = z.object({
   name: nameSchema,
+  picture: pictureInputSchema.optional(),
   ranges: z.array(z.object({ start: z.string().min(10).max(40), end: z.string().min(10).max(40) }).strict()).max(768),
 }).strict();
 export type AvailabilityInput = z.infer<typeof availabilityInputSchema>;

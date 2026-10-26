@@ -9,6 +9,32 @@ function storage() {
 }
 
 describe('private manual availability drafts', () => {
+  it('retains an optional goofy avatar, selfie draft, existing photo reference, and explicit removal', () => {
+    const store = storage(), base = draftBaseFingerprint(null);
+    const pictures = [{ kind: 'avatar', id: 'tongue' },
+      { kind: 'photo', dataUrl: 'data:image/jpeg;base64,/9j/2Q==' },
+      { kind: 'photo', key: 'p'.repeat(43) }, null] as const;
+    for (const picture of pictures) {
+      expect(writeAvailabilityDraft(store, 'key', { name: 'Alex', selected: new Set(), base, picture }, now)).toBe(true);
+      expect(readAvailabilityDraft(store, 'key', cells, base, now + 1)?.picture).toEqual(picture);
+    }
+  });
+  it('does not restore a picture draft over a newly changed saved picture', () => {
+    const store = storage();
+    const first = { name: 'Alex', selected: new Set<string>(), picture: { kind: 'avatar' as const, id: 'tongue' as const } };
+    const base = draftBaseFingerprint(first);
+    writeAvailabilityDraft(store, 'key', { ...first, base }, now);
+    const changed = draftBaseFingerprint({ ...first, picture: { kind: 'avatar', id: 'alien' } });
+    expect(changed).not.toBe(base);
+    expect(readAvailabilityDraft(store, 'key', cells, changed, now + 1)).toBeNull();
+  });
+  it('rejects corrupted picture drafts without restoring external image URLs or arbitrary avatar IDs', () => {
+    const store = storage(), base = draftBaseFingerprint(null);
+    for (const picture of [{ kind: 'avatar', id: 'unknown' }, { kind: 'photo', dataUrl: 'https://tracker.invalid/me.jpg' }]) {
+      store.setItem('key', JSON.stringify({ version: 1, name: 'Alex', selected: [], base, updatedAt: now, picture }));
+      expect(readAvailabilityDraft(store, 'key', cells, base, now + 1)).toBeNull();
+    }
+  });
   it('keys each Venn independently without retaining its raw join token', async () => {
     const token = 'private-share-token';
     const key = await availabilityDraftKey(token);

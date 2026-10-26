@@ -41,6 +41,25 @@ For HTTPS hosting, change `APP_BASE_URL` and `GOOGLE_CALENDAR_REDIRECT_URI`, reg
 
 References: [Google OAuth web-server flow](https://developers.google.com/identity/protocols/oauth2/web-server), [Calendar scopes](https://developers.google.com/workspace/calendar/api/auth).
 
+## Microsoft Outlook and Apple iCloud
+
+Run `npm run db:migrate` before using the new providers. Existing Google grants remain intact. Each Venn account can connect one account per provider and select multiple calendars from each. Sign-in to Venn is required for all calendar actions; responding manually to a shared Venn still works without an account.
+
+For Microsoft, register a Web application in Microsoft Entra that supports personal Microsoft accounts and work/school accounts. Set `AUTH_MICROSOFT_ENTRA_ID_ID` and `AUTH_MICROSOFT_ENTRA_ID_SECRET`, and register both callbacks:
+
+- `http://localhost:3000/api/auth/callback/microsoft-entra-id` for identity sign-in.
+- `http://localhost:3000/api/calendar/outlook/callback` for separate calendar consent.
+
+Use your HTTPS origin for production callbacks. Outlook calendar consent requests delegated `Calendars.ReadBasic` and `offline_access`, with PKCE and single-use state tied to the current Venn user. It discovers all calendar pages and checks each selected calendar's bounded `calendarView`, including recurring occurrences and exceptions. Only start/end, busy status and cancellation status are requested. Microsoft tokens stay encrypted server-side and refresh without requiring another sign-in until consent is revoked. Your organization may restrict consent.
+
+For Apple, sign in to Venn using Google or Microsoft, open Apple iCloud on `/setup`, and supply your Apple Account email and an [app-specific password](https://support.apple.com/en-us/102654). This requires two-factor authentication on the Apple Account. Sign in with Apple alone does not grant calendar access. No Apple developer OAuth registration is needed for this CalDAV flow. Calendars must be stored in iCloud; calendars stored only on a device cannot be read by the server. For Google or Outlook calendars displayed in the Apple Calendar app, connect the underlying provider instead.
+
+iCloud discovery and requests are restricted to trusted iCloud CalDAV HTTPS hosts. App credentials are encrypted using the existing `TOKEN_ENCRYPTION_KEY`. Bounded queries request server-expanded recurrence; event data is reduced to busy ranges in memory and never persisted or sent to the group or Gemini. Unsupported expansion, missing calendars, denied requests, or invalid data yield unknown availability. Removing the connection deletes local credentials; also revoke its app-specific password in Apple Account settings. Outlook access can likewise be removed from Microsoft account permissions after disconnecting locally.
+
+Newly discovered calendars start excluded. Include each calendar to check; different providers can be connected at the same time. If any selected provider fails, the combined check remains unknown. Provider busy ranges are a private reference and never select or save availability on a user's behalf. Event creation remains a separate, explicit Google-only action.
+
+References: [Microsoft authorization code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow), [calendarView](https://learn.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0), [tsdav CalDAV](https://tsdav.vercel.app/caldav/fetchcalendarobjects).
+
 ## 3. Gemini
 
 Create an API key using [Google AI Studio](https://aistudio.google.com/api-keys). Set `GEMINI_API_KEY` server-side. Set `GEMINI_MODEL` to a model available to that account with JSON structured-output support; the example follows Google's current documentation and still needs a real smoke check against your account.

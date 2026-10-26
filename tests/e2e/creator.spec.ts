@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures/test';
 import { DateTime } from 'luxon';
 import { getDb } from '../../src/lib/db';
 import { createSecret } from '../../src/features/identity/secrets';

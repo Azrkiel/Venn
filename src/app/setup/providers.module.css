@@ -1,0 +1,42 @@
+.signInOptions { display: grid; gap: 12px; max-width: 360px; margin-top: 22px; }
+.signInOptions form { display: contents; }
+.signInButton { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 50px; padding: 12px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font-size: 1rem; font-weight: 500; text-align: left; }
+button.signInButton:hover:not(:disabled) { border-color: #c9bdea; background: #faf7ff; }
+.signInButton svg { flex-shrink: 0; }
+.signInButton:disabled, .connect:disabled { opacity: .45; cursor: not-allowed; }
+.soon { color: var(--muted); background: transparent; border-style: dashed; }
+.soon svg { opacity: .55; }
+.soonPill { margin-left: auto; padding: 4px 10px; border-radius: 20px; background: #f1edf7; color: #8a7d98; font-size: .75rem; font-weight: 500; white-space: nowrap; }
+.signInHint { margin: 18px 0 0; color: var(--purple-ink); font-size: .9375rem; }
+.providers { display: grid; gap: 12px; margin: 24px 0 20px; }
+.provider { padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; min-width: 0; }
+.providerRow { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.providerText { flex: 1; min-width: 0; }
+.providerText h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.providerText p, .calendarRow p { color: var(--muted); font-size: .875rem; line-height: 1.5; margin: 2px 0 0; }
+.providerIcon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #f6f3f9; color: #2b2631; flex-shrink: 0; }
+.comingSoon { border-style: dashed; }
+.comingSoon .providerIcon { color: #8a7d98; }
+.connect, .quiet { display: inline-flex; align-items: center; justify-content: center; min-width: 108px; min-height: 40px; padding: 8px 16px; border: 1px solid var(--purple-ink); border-radius: 22px; background: transparent; color: var(--purple-ink); font-size: .9375rem; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.quiet { border-color: var(--line); color: var(--muted); }
+.connectedPill { padding: 5px 12px; border-radius: 20px; background: #e9f6ef; color: #2f7a52; font-size: .8125rem; font-weight: 500; white-space: nowrap; }
+.calendarRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--line); }
+.calendarRow > div { min-width: 0; overflow-wrap: anywhere; }
+.manage { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 8px; }
+.disconnect { background: none; border: 0; padding: 8px 0 0; color: var(--muted); font-size: .8125rem; text-decoration: underline; text-underline-offset: 4px; }
+.appleForm summary { list-style: none; cursor: pointer; }
+.appleForm summary::-webkit-details-marker { display: none; }
+.appleForm[open] summary .connect { display: none; }
+.appleForm form { display: grid; gap: 14px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+.appleForm p { color: var(--muted); font-size: .875rem; line-height: 1.6; margin: 0; }
+.appleForm a { color: var(--purple-ink); text-decoration: underline; text-underline-offset: 3px; }
+.appleForm label { display: grid; gap: 6px; font-size: .875rem; }
+.appleForm input { width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; min-height: 44px; font: inherit; }
+.appleForm button { justify-self: start; }
+.footnote { color: var(--muted); font-size: .875rem; line-height: 1.6; margin: 0; }
+@media (max-width: 540px) {
+  .provider { padding: 14px; }
+  .providerRow { flex-wrap: wrap; row-gap: 10px; }
+  .providerText { flex-basis: calc(100% - 56px); }
+  .providerRow > form, .providerRow > .connect, .providerRow > .soonPill, .providerRow > .connectedPill { margin-left: 56px; }
+}

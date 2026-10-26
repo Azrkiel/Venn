@@ -6,7 +6,10 @@ import { DateTime } from 'luxon';
 import { ArrowUpRight, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, LoaderCircle, Users } from 'lucide-react';
 import type { AvailabilityPollView } from '@/features/availability/service';
 import { browserGuestKey } from '@/features/availability/browser-identity';
-import { dateCells, filterTimeCells, paintSelection, parseWallTime, rangesToSelection, selectionToRanges, type SelectionRange, type TimeSection } from './selection';
+import { pictureSubmission, type PictureDraft } from '@/features/profile-pictures/schema';
+import { ProfilePicture } from '@/components/profile-picture';
+import { ProfilePicturePicker } from '@/components/profile-picture-picker';
+import { dateCells, paintSelection, parseWallTime, rangesToSelection, selectionToRanges, type SelectionRange } from './selection';
 import styles from './availability.module.css';
 import WeeklyCalendar from './weekly-calendar';
 import CalendarReferencePanel from './calendar-reference';
@@ -37,10 +40,10 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   const allCells = useMemo<SelectionRange[]>(() => timed
     ? poll.buckets.map(({ start, end }) => ({ start, end })) : dateCells(poll.startDate, poll.endDate), [timed, poll.buckets, poll.startDate, poll.endDate]);
   const [name, setName] = useState(initial.ownResponse?.name ?? '');
+  const [picture, setPicture] = useState<PictureDraft>(initial.ownResponse?.picture ?? null);
   const [selected, setSelected] = useState(() => rangesToSelection(initial.buckets, initial.ownResponse?.ranges ?? []));
   const [viewZone, setViewZone] = useState(poll.timezone);
   const [chosenDate, setChosenDate] = useState(poll.startDate);
-  const [timeSection, setTimeSection] = useState<TimeSection>('afternoon');
   const [month, setMonth] = useState(() => DateTime.fromISO(initial.startDate, { zone: 'UTC' }).startOf('month').toISODate()!);
   const [from, setFrom] = useState('12:00');
   const [until, setUntil] = useState('13:00');
@@ -62,12 +65,13 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   const [draftInitial] = useState(() => {
     const selected = rangesToSelection(initial.buckets, initial.ownResponse?.ranges ?? []);
     const name = initial.ownResponse?.name ?? '';
-    return { cells: initial.buckets, name, selected, closed: initial.closed,
-      base: draftBaseFingerprint(initial.ownResponse ? { name, selected } : null) };
+    const picture = initial.ownResponse?.picture ?? null;
+    return { cells: initial.buckets, name, selected, picture, closed: initial.closed,
+      base: draftBaseFingerprint(initial.ownResponse ? { name, selected, picture } : null) };
   });
   const draftKeyRef = useRef<string | null>(null);
   const draftBaseRef = useRef(draftInitial.base);
-  const draftStateRef = useRef({ name: draftInitial.name, selected: draftInitial.selected });
+  const draftStateRef = useRef({ name: draftInitial.name, selected: draftInitial.selected, picture: draftInitial.picture as PictureDraft });
   const drag = useRef<Drag | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const basePath = `/api/venns/${encodeURIComponent(share)}`;
@@ -75,8 +79,6 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   const dates = useMemo(() => timed ? [...new Set(allCells.map(cell => localDate(cell.start, viewZone)))]
     : allCells.map(cell => cell.start), [allCells, timed, viewZone]);
   const date = dates.includes(chosenDate) ? chosenDate : dates[0] ?? poll.startDate;
-  const visibleCells = useMemo(() => timed ? filterTimeCells(allCells.filter(cell => localDate(cell.start, viewZone) === date), viewZone, timeSection)
-    : [], [allCells, timed, date, viewZone, timeSection]);
   const monthStart = DateTime.fromISO(month, { zone: 'UTC' });
   const monthDates = dateCells(month, monthStart.endOf('month').toISODate()!);
   const selectedRanges = useMemo(() => selectionToRanges(allCells, selected), [allCells, selected]);
@@ -109,9 +111,10 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
         const draft = readAvailabilityDraft(sessionStorage, key, draftInitial.cells, draftInitial.base);
         if (!draft) return;
         const restored = new Set(draft.selected);
-        draftStateRef.current = { name: draft.name, selected: restored };
+        const restoredPicture = draft.picture === undefined ? draftInitial.picture : draft.picture;
+        draftStateRef.current = { name: draft.name, selected: restored, picture: restoredPicture };
         dirtyRef.current = true; requestRevision.current++;
-        setName(draft.name); setSelected(restored); setDirty(true); setSaveConfirmed(false);
+        setName(draft.name); setSelected(restored); setPicture(restoredPicture); setDirty(true); setSaveConfirmed(false);
         setMessage('Unsaved choices restored.');
       } catch { /* Draft recovery is optional; the response form stays usable. */ }
     }).catch(() => { /* Crypto or storage can be unavailable without blocking a response. */ });
@@ -144,9 +147,10 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
           if (!dirtyRef.current && !savingRef.current) {
             const nextName = next.ownResponse?.name ?? '';
             const nextSelection = rangesToSelection(next.buckets, next.ownResponse?.ranges ?? []);
-            setName(nextName); setSelected(nextSelection);
-            draftBaseRef.current = draftBaseFingerprint(next.ownResponse ? { name: nextName, selected: nextSelection } : null);
-            draftStateRef.current = { name: nextName, selected: nextSelection };
+            const nextPicture = next.ownResponse?.picture ?? null;
+            setName(nextName); setSelected(nextSelection); setPicture(nextPicture);
+            draftBaseRef.current = draftBaseFingerprint(next.ownResponse ? { name: nextName, selected: nextSelection, picture: nextPicture } : null);
+            draftStateRef.current = { name: nextName, selected: nextSelection, picture: nextPicture };
           }
         } else if ([404, 410].includes(response.status)) { setUnavailable(true); setError(readableError(value)); }
       } catch { /* A temporary refresh failure keeps the last observed results and all edits. */ }
@@ -160,14 +164,15 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
   }, [basePath, revealNames]);
 
   function markDirty() { dirtyRef.current = true; setDirty(true); setSaveConfirmed(false); setMessage(''); }
-  function persistDraft(nextName: string, nextSelection: Set<string>) {
-    draftStateRef.current = { name: nextName, selected: nextSelection };
+  function persistDraft(nextName: string, nextSelection: Set<string>, nextPicture: PictureDraft = picture) {
+    draftStateRef.current = { name: nextName, selected: nextSelection, picture: nextPicture };
     if (!draftKeyRef.current) return;
-    try { writeAvailabilityDraft(sessionStorage, draftKeyRef.current, { name: nextName, selected: nextSelection, base: draftBaseRef.current }); }
+    try { writeAvailabilityDraft(sessionStorage, draftKeyRef.current, { name: nextName, selected: nextSelection, picture: nextPicture, base: draftBaseRef.current }); }
     catch { /* The site works when session storage is blocked. */ }
   }
   function updateSelection(next: Set<string>) { markDirty(); setSelected(next); persistDraft(name, next); }
   function updateName(next: string) { markDirty(); setName(next); persistDraft(next, selected); }
+  function updatePicture(next: PictureDraft) { markDirty(); setPicture(next); persistDraft(name, selected, next); }
 
   function pointerStart(event: PointerEvent<HTMLDivElement>) {
     if (!canEdit || (event.pointerType === 'mouse' && event.button !== 0)) return;
@@ -225,7 +230,7 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
     try {
       const guestKey = await browserGuestKey();
       const response = await fetch(`${basePath}/availability`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Venn-Guest-Key': guestKey },
-        body: JSON.stringify({ name: name.trim(), ranges: selectedRanges }) });
+        body: JSON.stringify({ name: name.trim(), ranges: selectedRanges, picture: pictureSubmission(picture) }) });
       const value = await response.json();
       if (!response.ok) {
         if (response.status === 410) setPoll(previous => ({ ...previous, closed: true }));
@@ -234,9 +239,10 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
       const next = value as AvailabilityPollView;
       setPoll(next); setName(next.ownResponse?.name ?? name);
       const nextSelection = rangesToSelection(next.buckets, next.ownResponse?.ranges ?? []);
-      setSelected(nextSelection);
-      draftBaseRef.current = draftBaseFingerprint(next.ownResponse ? { name: next.ownResponse.name, selected: nextSelection } : null);
-      draftStateRef.current = { name: next.ownResponse?.name ?? name, selected: nextSelection };
+      const nextPicture = next.ownResponse?.picture ?? null;
+      setSelected(nextSelection); setPicture(nextPicture);
+      draftBaseRef.current = draftBaseFingerprint(next.ownResponse ? { name: next.ownResponse.name, selected: nextSelection, picture: nextPicture } : null);
+      draftStateRef.current = { name: next.ownResponse?.name ?? name, selected: nextSelection, picture: nextPicture };
       if (draftKeyRef.current) {
         try { clearAvailabilityDraft(sessionStorage, draftKeyRef.current); } catch { /* Saving is already complete. */ }
       }
@@ -279,7 +285,7 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
       <p className={styles.deadline}><Clock3 size={14} aria-hidden="true" />{poll.closed ? 'Voting closed' : `Closes ${DateTime.fromISO(poll.closesAt, { zone: poll.timezone }).toFormat('MMM d, h:mm a ZZZZ')}`}</p>
       <span className={styles.respondents}><Users size={14} aria-hidden="true" />{poll.respondentCount} {poll.respondentCount === 1 ? 'response' : 'responses'}</span>
     </header>
-    <form onSubmit={save} aria-busy={saving} className={`${styles.card} ${weekly ? styles.weeklyCard : ''}`}>
+    <form onSubmit={save} aria-busy={saving} className={`${styles.card} ${timed ? styles.weeklyCard : ''}`}>
       <div className={styles.formHeading}><h3>Your availability</h3>{!poll.closed && <p>Drag to select. Tap to undo.</p>}</div>
       <div className={timed ? styles.controlRow : undefined}>
         <label className={styles.field}><span>Your name</span><input required maxLength={40} value={name} onChange={event => updateName(event.target.value)} disabled={!canEdit} placeholder="e.g. Sam" autoComplete="given-name" /></label>
@@ -287,28 +293,13 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
           {[...new Set([viewZone, poll.timezone, 'UTC'])].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}
         </select></label>}
       </div>
+      <ProfilePicturePicker share={share} value={picture} onChange={updatePicture} disabled={!canEdit} name={name} />
       <CalendarReferencePanel share={share} window={calendarWindow} signedIn={signedIn} onChange={calendarChanged} />
       {timed ? <>
-        {!weekly && <div className={styles.controlRow}>
-          <label className={styles.field}><span>Date</span><select aria-label="Date" value={date} onChange={event => setChosenDate(event.target.value)} disabled={unavailable}>
-            {dates.map(value => <option key={value} value={value}>{DateTime.fromISO(value).toFormat('EEE, MMM d')}</option>)}
-          </select></label>
-          <label className={styles.field}><span>Time of day</span><select aria-label="Time of day" value={timeSection} onChange={event => setTimeSection(event.target.value as TimeSection)}>
-            <option value="overnight">Overnight · 12–6 am</option><option value="morning">Morning · 6 am–noon</option>
-            <option value="afternoon">Afternoon · noon–6 pm</option><option value="evening">Evening · 6 pm–12 am</option><option value="all">Whole day</option>
-          </select></label>
-        </div>}
         {viewZone !== poll.timezone && <p className={styles.hint}>Organizer: {poll.timezone.replaceAll('_', ' ')}</p>}
-        {weekly && <WeeklyCalendar cells={allCells} buckets={poll.buckets} selected={selected} onChange={updateSelection} timezone={viewZone} disabled={!canEdit}
-          busy={calendar.busy} calendarKnown={calendar.known} onWindowChange={weekWindowChanged} />}
-        {!weekly && <div className={styles.timePicker} ref={gridRef} role="group" aria-label="Drag to select times"
-          onPointerDown={pointerStart} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
-          {visibleCells.map(cell => {
-            const instant = DateTime.fromISO(cell.start, { zone: viewZone });
-            return cellButton(cell, `Select ${instant.toFormat('yyyy-MM-dd h:mm a ZZ')}`, <><span>{instant.toFormat('h:mm a')}</span>
-              {instant.getPossibleOffsets().length > 1 && <span className={styles.cellOffset}>{instant.toFormat('ZZ')}</span>}</>);
-          })}
-        </div>}
+        <WeeklyCalendar cells={allCells} buckets={poll.buckets} selected={selected} onChange={updateSelection} timezone={viewZone} disabled={!canEdit}
+          busy={calendar.busy} calendarKnown={calendar.known} onWindowChange={weekly ? weekWindowChanged : undefined}
+          day={weekly ? undefined : date} onDayChange={setChosenDate} />
         <details className={styles.timeAlternative}>
           <summary>Or enter a time window</summary>
           {weekly && <label className={styles.field} style={{ marginTop: 16 }}><span>Date</span><select aria-label="Date" value={date} onChange={event => setChosenDate(event.target.value)} disabled={!canEdit}>
@@ -336,7 +327,7 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
         </div>
         <p className={styles.hint}>Whole days · {poll.timezone.replaceAll('_', ' ')}</p>
       </div>}
-      {!weekly && <details className={styles.help}><summary>Help</summary><p>{timed ? 'Choose a date, then drag over 15-minute blocks. Use a different time-of-day section for other hours; selections stay in place.' : 'Choose whole dates now. Set exact times closer to the plan.'} Use Tab to move between choices and Enter or Space to select.</p></details>}
+      {!timed && <details className={styles.help}><summary>Help</summary><p>Choose whole dates now. Set exact times closer to the plan. Use Tab to move between choices and Enter or Space to select.</p></details>}
       <div className={styles.selectionSummary}>
         <strong>{selected.size > 0 ? `${timed ? selectedRanges.length : selected.size} ${timed ? (selectedRanges.length === 1 ? 'time window' : 'time windows') : (selected.size === 1 ? 'date' : 'dates')} selected` : 'Nothing selected'}</strong>
         {canEdit && selected.size > 0 && <button type="button" className={styles.textButton} onClick={() => updateSelection(new Set())}>Clear</button>}
@@ -361,7 +352,8 @@ export default function AvailabilityVoting({ share, initial, signedIn = false }:
       </li>)}</ol> : <div className={styles.emptyOverlap}><p>{poll.respondentCount ? 'No overlap yet. More answers may help.' : 'Waiting for the first answer.'}</p></div>}
       {ownResponse && <div className={styles.names}>
         <label><input type="checkbox" checked={revealNames} onChange={event => setRevealNames(event.target.checked)} />See who has answered</label>
-        {revealNames && <ul aria-label="Respondents">{poll.names?.map((value, index) => <li key={`${value}-${index}`}>{value}</li>)}</ul>}
+        {revealNames && <ul aria-label="Respondents">{(poll.respondents ?? poll.names?.map(name => ({ name, picture: null })))?.map((person, index) =>
+          <li key={`${person.name}-${index}`}><ProfilePicture share={share} picture={person.picture} name={person.name} size={34} decorative /><span>{person.name}</span></li>)}</ul>}
       </div>}
       {poll.isOwner && !poll.closed && <div className={styles.owner}><span>Have enough answers?</span><button type="button" className={styles.textButton} disabled={saving} onClick={close}>Close voting early</button></div>}
     </section>

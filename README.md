@@ -4,7 +4,7 @@ Let's find a time, together.
 
 Venn turns a group's "when is everyone free?" into a shared plan. Create a Venn, choose its dates and closing deadline, and share one link. Friends mark their availability without an account; everyone sees the overlap. Day, week and two-week plans collect times, while longer plans collect whole dates.
 
-The separate calendar planner at `/live` helps answer "are you free?" texts using selected Google calendars, Gemini interpretation and a reply you choose to send. Solo requests check your calendar; connected groups compare consenting members. Venn never messages your friends for you or reads event titles or descriptions.
+The separate calendar planner at `/live` helps answer "are you free?" texts using selected Google, Microsoft Outlook, and Apple iCloud calendars, Gemini interpretation and a reply you choose to send. Solo requests check your calendar; connected groups compare consenting members. Calendar details are never stored or shared with friends.
 
 ## Status
 
@@ -22,7 +22,7 @@ Without credentials the app runs a clearly labelled sample planner at `/app` tha
 | Availability responses, overlap and close summaries | `src/features/availability/`, `src/app/r/[share]/` |
 | Overlap ranking (pure, deterministic) | `src/features/scheduling/rank.ts`, `windows.ts` |
 | Ask interpretation (Gemini structured output) | `src/features/scheduling/intent.ts` |
-| Google sign-in and Calendar OAuth, encrypted grants | `src/auth.ts`, `src/features/calendar/` |
+| Google/Microsoft sign-in, Google/Outlook/iCloud calendars, encrypted grants | `src/auth.ts`, `src/features/calendar/` |
 | Groups, invites, live requests | `src/features/groups/`, `src/features/requests/` |
 | Shared options and votes | `src/features/polls/`, `src/app/r/[share]/` |
 | Add the chosen event once | `src/features/requests/add.ts`, `booking.ts` |

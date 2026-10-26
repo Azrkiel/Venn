@@ -2,7 +2,8 @@
 .nav { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
 .textLink { color: var(--purple-ink); font-size: 1rem; line-height: 1.5; text-align: right; }
 .intro { padding: 48px 0 32px; }
-.intro h1 { font-size: clamp(2.25rem, 5.8vw, 3rem); line-height: 1.18; letter-spacing: -1.3px; }
+.intro h1 { font-size: clamp(1.75rem, 5.8vw, 3rem); line-height: 1.18; letter-spacing: -1.3px; white-space: nowrap; }
+.intro h1 > span { font-style: italic; }
 .intro > p:last-child { color: #736b7b; line-height: 1.7; margin-top: 13px; max-width: 530px; font-size: 1.125rem; }
 .card { border: 1px solid var(--line); border-radius: 20px; padding: 30px; background: var(--surface); }
 .cardHeading { margin-bottom: 28px; }

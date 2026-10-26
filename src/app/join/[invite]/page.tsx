@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { currentUserId, loginConfigured } from '@/auth';
 import { getDb } from '@/lib/db';
 import { digestSecret } from '@/features/identity/secrets';
-import { VennMark } from '@/components/venn-mark';
+import { VennLogo } from '@/components/venn-logo';
 import { JoinClient } from './join-client';
 import styles from '../../live/live.module.css';
 
@@ -24,7 +24,7 @@ export default async function JoinPage({ params }: { params: Promise<{ invite: s
     } catch { unavailable = true; }
   }
   return <main className={styles.shell}>
-    <nav className={styles.nav} aria-label="Venn navigation"><Link className={styles.brand} href="/"><VennMark size={40} /><span>venn</span></Link><Link className={styles.navLink} href="/live">Your planner</Link></nav>
+    <nav className={styles.nav} aria-label="Venn navigation"><Link className={styles.brand} href="/"><VennLogo size={36} /></Link><Link className={styles.navLink} href="/live">Your planner</Link></nav>
     <p className={styles.eyebrow}>A LITTLE MORE TOGETHER</p>
     <h1 className={styles.title}>{group ? <>You&apos;re invited to<br /><span className={styles.titleAccent}>{group.name}.</span></> : <>Good plans start<br /><span className={styles.titleAccent}>with good company.</span></>}</h1>
     {group ? <section className={styles.card}>

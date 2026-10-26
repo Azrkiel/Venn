@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures/test';
 import { DateTime } from 'luxon';
 
 test.use({ timezoneId: 'America/New_York' });

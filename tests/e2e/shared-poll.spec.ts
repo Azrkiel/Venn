@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Page } from './fixtures/test';
 import { cleanupPoll, closeDb, seedPoll, type SeededPoll } from './fixtures/seed';
 
 test.skip(!process.env.DATABASE_URL, 'DATABASE_URL is not set; shared poll tests need Postgres.');

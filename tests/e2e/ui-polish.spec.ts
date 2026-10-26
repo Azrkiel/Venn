@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test';
+import { expect, test, type Locator } from './fixtures/test';
 import { getDb } from '../../src/lib/db';
 import { createAvailabilityPoll } from '../../src/features/availability/service';
 import { planningEndDate, type AvailabilityScale } from '../../src/features/availability/schema';

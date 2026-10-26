@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures/test';
 import { getDb } from '../../src/lib/db';
 import { createSecret } from '../../src/features/identity/secrets';
 import { saveProviderGrant } from '../../src/features/calendar/provider-store';
